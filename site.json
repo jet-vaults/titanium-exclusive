@@ -1,0 +1,15 @@
+{
+  "url": "https://titaniumexclusive.com",
+  "pages_url": "https://titanium-exclusive.pages.dev",
+  "nameservers": [
+    "lia.ns.cloudflare.com",
+    "louis.ns.cloudflare.com"
+  ],
+  "storage": "https://jetvaults.blob.core.windows.net/titanium-exclusive/",
+  "private_storage": "https://jetvaults.blob.core.windows.net/titanium-exclusive-private/",
+  "storage_profile": "standard",
+  "storage_profile_label": "Standard",
+  "storage_account": "jetvaults",
+  "storage_account_url": "https://jetvaults.blob.core.windows.net",
+  "activated": false
+}
