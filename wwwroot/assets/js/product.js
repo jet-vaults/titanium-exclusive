@@ -1,6 +1,6 @@
 // Product page: gallery, options (add-ons / variations), quantity, add to cart, sticky bar.
-import { $, $$, toast, money, reducedMotion } from './ui.js?v=4';
-import { addLine, open as openCart } from './cart.js?v=4';
+import { $, $$, toast, money, reducedMotion } from './ui.js?v=5';
+import { addLine, open as openCart } from './cart.js?v=5';
 
 const form = $('[data-buy-form]');
 if (form) init(form);
@@ -19,17 +19,30 @@ function init(form) {
   function selectedVariation() {
     if (!cfg.variations || !cfg.variations.length) return null;
     const chosen = {};
-    $$('[data-attr]', form).forEach((sel) => { chosen[sel.dataset.attr] = sel.value; });
+    $$('[data-attr]', form).forEach((sel) => { chosen[sel.dataset.attr] = (sel.value || '').toLowerCase(); });
     if (Object.values(chosen).some((v) => !v)) return null;
-    return cfg.variations.find((v) => v.attributes.every((a) => !a.value || chosen[a.name] === a.value)) || null;
+    return cfg.variations.find((v) => v.attributes.every((a) => !a.value || chosen[a.name] === String(a.value).toLowerCase())) || null;
+  }
+  function variationLabels(variation) {
+    return $$('[data-attr]', form).map((sel) => {
+      const opt = sel.selectedOptions[0];
+      return { name: sel.dataset.attr, value: opt ? (opt.dataset.label || opt.textContent.trim()) : sel.value };
+    });
   }
 
   const recalc = () => {
-    const unit = cfg.price + selectedOptions().reduce((s, o) => s + o.price, 0);
+    const variation = selectedVariation();
+    const base = variation ? variation.price : cfg.price;
+    const unit = base + selectedOptions().reduce((s, o) => s + o.price, 0);
     const qty = Math.max(1, Number(qtyInput.value) || 1);
     const text = money(unit * qty, cfg.currency, cfg.minorUnit);
     if (totalEl) totalEl.textContent = text;
     if (stickyTotal) stickyTotal.textContent = text;
+    if (variation && submit) {
+      const label = submit.querySelector('.btn__label');
+      if (!variation.inStock) { submit.disabled = true; if (label) label.textContent = 'Sold out'; }
+      else if (cfg.inStock) { submit.disabled = false; if (label) label.textContent = 'Add to cart'; }
+    }
   };
 
   $$('[data-qty]', form).forEach((b) => b.addEventListener('click', () => { qtyInput.value = Math.max(1, Number(qtyInput.value) + Number(b.dataset.qty)); recalc(); }));
@@ -42,11 +55,12 @@ function init(form) {
     if (!cfg.inStock) return;
     const variation = selectedVariation();
     if (cfg.variations && cfg.variations.length && !variation) { toast('Please choose an option first.', { error: true }); $('[data-attr]', form)?.focus(); return; }
+    if (variation && !variation.inStock) { toast('That combination is currently sold out.', { error: true }); return; }
     const qty = Math.max(1, Number(qtyInput.value) || 1);
     addLine({
-      id: cfg.id, name: cfg.name, permalink: cfg.permalink, image: cfg.image, price: cfg.price, currency: cfg.currency, minorUnit: cfg.minorUnit,
+      id: cfg.id, name: cfg.name, permalink: cfg.permalink, image: cfg.image, price: variation ? variation.price : cfg.price, currency: cfg.currency, minorUnit: cfg.minorUnit,
       max: cfg.max, soldIndividually: cfg.soldIndividually, options: selectedOptions(),
-      variation: variation ? variation.attributes.map((a) => ({ name: a.name, value: a.value })) : [], variationId: variation ? variation.id : null,
+      variation: variation ? variationLabels(variation) : [], variationId: variation ? variation.id : null,
     }, qty);
     toast(`${cfg.name} added to your cart`);
     openCart();

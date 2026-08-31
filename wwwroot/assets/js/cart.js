@@ -1,7 +1,7 @@
 // Cart: kept in the browser (localStorage) until a checkout back-end is connected.
 // Lines carry a snapshot of name / price / options so the drawer renders instantly;
 // prices are re-validated against /api/product/ when the cart is opened.
-import { $, $$, toast, openDialog, lockScroll, unlockScroll, money, decode } from './ui.js?v=4';
+import { $, $$, toast, openDialog, lockScroll, unlockScroll, money, decode } from './ui.js?v=5';
 
 const KEY = 'te-cart-v1';
 let cart = load();
@@ -61,9 +61,11 @@ async function revalidate() {
     try {
       const p = await fetch(`/api/product/?id=${l.id}`).then((r) => (r.ok ? r.json() : null));
       if (!p || !p.id) return;
-      if (p.price !== l.price) { l.price = p.price; changed = true; }
+      const v = l.variationId && p.variations ? p.variations.find((x) => x.id === l.variationId) : null;
+      const price = v ? v.price : p.price;
+      if (!l.variationId || v) { if (price !== l.price) { l.price = price; changed = true; } }
       if (p.image && p.image !== l.image) { l.image = p.image; changed = true; }
-      l.inStock = p.inStock;
+      l.inStock = v ? v.inStock : p.inStock;
     } catch { /* offline: keep snapshot */ }
   }));
   if (changed) save(); else render();
@@ -91,8 +93,10 @@ function renderCount() {
   $$('[data-cart-count-label]').forEach((el) => { el.textContent = n ? `(${n})` : ''; });
 }
 
+const pageCurrency = () => document.documentElement.dataset.currency || cart.currency || 'CAD';
+
 function lineHtml(l) {
-  const cur = l.currency || cart.currency, mu = l.minorUnit ?? 2;
+  const cur = pageCurrency(), mu = l.minorUnit ?? 2;
   const meta = (l.options || []).map((o) => o.label).concat((l.variation || []).map((v) => `${v.name}: ${v.value}`));
   return `<li class="cart-line" data-key="${escapeAttr(l.key)}">
     <a class="cart-line__media" href="${escapeAttr(l.permalink || '#')}">${l.image ? `<img src="${escapeAttr(l.image)}" alt="" width="88" height="88" loading="lazy">` : ''}</a>
@@ -106,7 +110,7 @@ function lineHtml(l) {
           <input type="number" min="1" max="${l.max || 99}" value="${l.qty}" aria-label="Quantity" ${l.soldIndividually ? 'readonly' : ''}>
           <button type="button" data-qty="1" aria-label="Increase quantity"><svg class="icon" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
         </div>
-        <span class="cart-line__price">${money(lineTotal(l), cur, mu)}</span>
+        <span class="cart-line__price">${money(lineTotal(l), cur, mu)} <span class="price__currency">${cur}</span></span>
       </div>
       <button type="button" class="cart-line__remove" data-remove>Remove</button>
     </div>
@@ -116,13 +120,13 @@ function lineHtml(l) {
 function render() {
   renderCount();
   const has = cart.lines.length > 0;
-  const cur = cart.lines[0] ? cart.lines[0].currency : cart.currency;
+  const cur = pageCurrency();
   const mu = cart.lines[0] ? cart.lines[0].minorUnit ?? 2 : 2;
   const root = $('[data-cart-drawer]');
   if (root) {
     const lines = $('[data-cart-lines]', root), empty = $('[data-cart-empty]', root), foot = $('[data-cart-foot]', root), sub = $('[data-cart-subtotal]', root);
     empty.hidden = has; lines.hidden = !has; foot.hidden = !has;
-    if (has) { lines.innerHTML = cart.lines.map(lineHtml).join(''); sub.textContent = money(subtotal(), cur, mu); }
+    if (has) { lines.innerHTML = cart.lines.map(lineHtml).join(''); sub.innerHTML = `${money(subtotal(), cur, mu)} <span class="price__currency">${cur}</span>`; }
     renderSuggestion(root);
   }
   const pageLines = $('[data-cart-page-lines]');
@@ -130,13 +134,13 @@ function render() {
     pageLines.innerHTML = has ? cart.lines.map(lineHtml).join('') : '';
     $('[data-cart-page-empty]').hidden = has;
     $('[data-cart-page-summary]').hidden = !has;
-    if (has) $('[data-cart-page-subtotal]').textContent = money(subtotal(), cur, mu);
+    if (has) $('[data-cart-page-subtotal]').innerHTML = `${money(subtotal(), cur, mu)} <span class="price__currency">${cur}</span>`;
   }
   const checkout = $('[data-checkout-summary]');
   if (checkout) {
     checkout.innerHTML = has
-      ? `<ul class="cart-lines">${cart.lines.map((l) => `<li class="cart-line" data-key="${escapeAttr(l.key)}"><a class="cart-line__media" href="${escapeAttr(l.permalink)}">${l.image ? `<img src="${escapeAttr(l.image)}" alt="" width="88" height="88">` : ''}</a><div><p class="cart-line__name">${escapeHtml(l.name)}</p><p class="cart-line__meta">Qty ${l.qty}${(l.options || []).length ? ' · ' + escapeHtml(l.options.map((o) => o.label).join(' · ')) : ''}</p><p class="cart-line__price" style="margin-top:.5rem">${money(lineTotal(l), cur, mu)}</p></div></li>`).join('')}</ul>
-         <div class="cart-totals__row" style="margin-top:1.25rem"><span>Subtotal</span><strong>${money(subtotal(), cur, mu)}</strong></div>`
+      ? `<ul class="cart-lines">${cart.lines.map((l) => `<li class="cart-line" data-key="${escapeAttr(l.key)}"><a class="cart-line__media" href="${escapeAttr(l.permalink)}">${l.image ? `<img src="${escapeAttr(l.image)}" alt="" width="88" height="88">` : ''}</a><div><p class="cart-line__name">${escapeHtml(l.name)}</p><p class="cart-line__meta">Qty ${l.qty}${(l.options || []).length ? ' · ' + escapeHtml(l.options.map((o) => o.label).join(' · ')) : ''}</p><p class="cart-line__price" style="margin-top:.5rem">${money(lineTotal(l), cur, mu)} <span class="price__currency">${cur}</span></p></div></li>`).join('')}</ul>
+         <div class="cart-totals__row" style="margin-top:1.25rem"><span>Subtotal</span><strong>${money(subtotal(), cur, mu)} <span class="price__currency">${cur}</span></strong></div>`
       : '<p class="muted">Your cart is empty.</p>';
   }
 }

@@ -7,7 +7,7 @@ import { BRAND, NAV, FOOTER_LINKS } from '../content/brand.js';
 import { getCategories, getAllProducts, featuredProducts } from '../lib/store.js';
 import { ICON, button } from './components.js';
 
-export const ASSET_VERSION = '4';
+export const ASSET_VERSION = '5';
 
 export async function shellData(c) {
   const [categories, products] = await Promise.all([getCategories(c.ctx), getAllProducts(c.ctx, c.currency)]);

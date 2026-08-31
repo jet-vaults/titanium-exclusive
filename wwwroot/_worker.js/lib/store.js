@@ -126,7 +126,15 @@ function normalizeProduct(p, currency) {
       hasVariations: a.has_variations,
       terms: (a.terms || []).map((t) => ({ id: t.id, name: decodeEntities(t.name), slug: t.slug })),
     })),
-    variations: (p.variations || []).map((v) => ({ id: v.id, attributes: v.attributes })),
+    variations: (p.variations || []).map((v) => ({
+      id: v.id,
+      attributes: v.attributes,
+      price: Number(v.price || prices.price || 0),
+      regularPrice: Number(v.regular_price || 0),
+      onSale: !!v.on_sale,
+      inStock: v.is_in_stock !== false,
+      sku: v.sku || '',
+    })),
     addons: (p.addons || []).map((a) => ({ ...a, options: a.options.map((o) => ({ ...o, priceMinor: Math.round(Number(o.price || 0) * 100) })) })),
     hasOptions: !!p.has_options,
     purchasable: !!p.is_purchasable,
@@ -272,5 +280,6 @@ export function cartLineData(p) {
     soldIndividually: p.soldIndividually,
     max: p.addToCart.maximum || 99,
     hasOptions: p.hasOptions || p.addons.length > 0,
+    variations: p.variations.map((v) => ({ id: v.id, price: v.price, inStock: v.inStock })),
   };
 }

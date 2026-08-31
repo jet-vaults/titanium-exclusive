@@ -1,5 +1,5 @@
 // CAD / USD switch. The choice is stored in a cookie the edge reads when rendering prices.
-import { $$ } from './ui.js?v=4';
+import { $$ } from './ui.js?v=5';
 
 export function initCurrency() {
   $$('.currency__opt[data-currency]').forEach((btn) => btn.addEventListener('click', () => {

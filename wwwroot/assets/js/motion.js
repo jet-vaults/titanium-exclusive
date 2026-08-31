@@ -1,5 +1,5 @@
 // Scroll-driven and hover motion. transform/opacity only; honours prefers-reduced-motion.
-import { $, $$, reducedMotion } from './ui.js?v=4';
+import { $, $$, reducedMotion } from './ui.js?v=5';
 
 export function initMotion() {
   reveals();

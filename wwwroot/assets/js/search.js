@@ -1,5 +1,5 @@
 // Predictive search overlay backed by the edge /api/search/ endpoint.
-import { $, $$, openDialog, lockScroll, unlockScroll, debounce } from './ui.js?v=4';
+import { $, $$, openDialog, lockScroll, unlockScroll, debounce } from './ui.js?v=5';
 
 export function initSearch() {
   const root = $('[data-search]');
@@ -35,12 +35,13 @@ export function initSearch() {
       <div>
         ${products.length ? `<p class="search__group-title">Cookware</p>
         <div class="search__products">${products.map((p) => `<a class="search__product" href="${p.url}" data-result>
-          <img src="${p.image || ''}" alt="" width="56" height="56" loading="lazy">
-          <span><span class="search__product-name">${p.name}</span><br><span class="search__product-price">${p.price}${p.meta ? ` · ${p.meta}` : ''}</span></span>
-        </a>`).join('')}</div>
-        <p class="search__all"><a class="link-arrow" href="/search?q=${encodeURIComponent(q)}"><span>See all results</span><svg class="icon icon-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a></p>` : ''}
+          <span class="search__product-thumb">${p.image ? `<img src="${p.image}" alt="" width="56" height="56" loading="lazy">` : ''}</span>
+          <span class="search__product-text"><span class="search__product-name">${p.name}</span>${p.meta ? `<span class="search__product-meta">${p.meta}</span>` : ''}</span>
+          <span class="search__product-price">${p.price}</span>
+        </a>`).join('')}
+        <a class="search__all" href="/search?q=${encodeURIComponent(q)}" data-result><span>See all results for “${escapeHtml(q)}”</span><svg class="icon icon-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>` : ''}
       </div>
-      ${links.length ? `<div><p class="search__group-title">Also</p><ul class="search__links">${links.map((l) => `<li><a href="${l.url}" data-result><span class="muted">${l.kind} · </span>${l.name}</a></li>`).join('')}</ul></div>` : ''}
+      ${links.length ? `<div><p class="search__group-title">Also</p><ul class="search__links">${links.map((l) => `<li><a href="${l.url}" data-result><span class="search__link-kind">${l.kind}</span>${l.name}</a></li>`).join('')}</ul></div>` : ''}
     </div>`;
   };
 

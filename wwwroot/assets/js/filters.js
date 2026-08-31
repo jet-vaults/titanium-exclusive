@@ -1,6 +1,6 @@
 // Shop filtering and sorting. The grid is server-rendered with data attributes; this module
 // filters it client-side (71 products) and mirrors the state in the URL.
-import { $, $$, lockScroll, unlockScroll } from './ui.js?v=4';
+import { $, $$, lockScroll, unlockScroll } from './ui.js?v=5';
 
 const shop = $('[data-shop]');
 if (shop) init(shop);

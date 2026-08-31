@@ -29,8 +29,10 @@ export async function renderProduct(c, { slug }) {
     id: product.id, name: product.name, permalink: product.permalink, price: product.price, currency: product.currency, minorUnit: product.minorUnit,
     image: product.images[0] ? product.images[0].thumb : '', max: product.addToCart.maximum || 99, soldIndividually: product.soldIndividually,
     inStock: product.inStock, hasAddons: addons.length > 0,
-    variations: product.type === 'variable' ? product.variations.map((v) => ({ id: v.id, attributes: v.attributes.map((a) => ({ name: a.name, value: a.value })) })) : [],
+    variations: product.type === 'variable' ? product.variations.map((v) => ({ id: v.id, price: v.price, inStock: v.inStock, attributes: v.attributes.map((a) => ({ name: a.name, value: a.value })) })) : [],
   };
+  const firstVariation = product.variations.find((v) => v.inStock) || product.variations[0];
+  const chosenFor = (attrName) => { const a = firstVariation && firstVariation.attributes.find((x) => x.name === attrName); return a ? a.value : ''; };
 
   const body = html`
     <div class="container">
@@ -69,8 +71,7 @@ export async function renderProduct(c, { slug }) {
                 <div class="opt-group">
                   <label class="opt-group__label" for="attr-${at.id}"><span>${at.name}</span></label>
                   <select class="input select" id="attr-${at.id}" data-attr="${at.name}" required>
-                    <option value="">Choose ${at.name.toLowerCase()}</option>
-                    ${at.terms.map((t) => html`<option value="${t.name}">${t.name}</option>`)}
+                    ${at.terms.map((t) => html`<option value="${t.slug}" data-label="${t.name}" ${t.slug === chosenFor(at.name) ? raw('selected') : ''}>${t.name}</option>`)}
                   </select>
                 </div>`) : ''}
             </div>` : ''}
@@ -88,7 +89,7 @@ export async function renderProduct(c, { slug }) {
                 </div>
                 <button class="btn btn--primary btn--lg" type="submit" data-buy-submit ${product.inStock ? '' : raw('disabled')}>
                   <span class="btn__label">${product.inStock ? 'Add to cart' : 'Sold out'}</span>
-                  <span class="buy__total" data-buy-total>${money(product.price, product.currency, product.minorUnit)}</span>
+                  <span class="buy__total" data-buy-total>${money(firstVariation ? firstVariation.price : product.price, product.currency, product.minorUnit)}</span>
                 </button>
               </div>
               <span class="buy__stock ${product.inStock ? '' : 'buy__stock--out'}">${product.inStock ? (product.lowStock ? `Only ${product.lowStock} left` : 'In stock — ships from Toronto') : 'Currently sold out'}</span>
