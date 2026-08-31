@@ -1,9 +1,9 @@
 // Entry point: wires the shared shell behaviours. Page-specific modules load themselves.
-import { initNav } from './nav.js';
-import { initMotion } from './motion.js';
-import { initCart } from './cart.js';
-import { initSearch } from './search.js';
-import { initCurrency } from './currency.js';
+import { initNav } from './nav.js?v=3';
+import { initMotion } from './motion.js?v=3';
+import { initCart } from './cart.js?v=3';
+import { initSearch } from './search.js?v=3';
+import { initCurrency } from './currency.js?v=3';
 
 document.documentElement.classList.remove('no-js');
 initNav();
@@ -13,9 +13,5 @@ initSearch();
 initCurrency();
 
 // Mark the document loaded for the staged hero entrance once fonts are usable.
-const loaded = () => document.body.classList.add('is-loaded');
-if (document.fonts && document.fonts.ready) {
-  Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 900))]).then(loaded);
-} else {
-  setTimeout(loaded, 120);
-}
+// Start the staged hero entrance right away; fonts swap in as they arrive.
+requestAnimationFrame(() => document.body.classList.add('is-loaded'));

@@ -41,6 +41,7 @@ function normalizeRecipe(r) {
     title,
     image: r.image,
     imageThumb: r.thumb || r.image,
+    srcset: r.srcset || '',
     date: r.date,
     ingredients,
     steps,

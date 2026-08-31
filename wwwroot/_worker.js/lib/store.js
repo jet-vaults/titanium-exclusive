@@ -27,6 +27,7 @@ export async function getCategories() {
       count: c.count,
       image: c.image,
       thumb: c.thumb || c.image,
+      srcset: c.srcset || '',
       order: Math.max(0, COLLECTIONS.findIndex((k) => k.slug === c.slug)),
     })).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)));
   }
@@ -116,7 +117,7 @@ function normalizeProduct(p, currency) {
     minorUnit: minor,
     rating: Number(p.average_rating || 0),
     reviewCount: Number(p.review_count || 0),
-    images: (p.images || []).map((i) => ({ id: i.id, src: i.src, thumb: i.thumb || i.src, alt: decodeEntities(i.alt || p.name) })),
+    images: (p.images || []).map((i) => ({ id: i.id, src: i.src, thumb: i.thumb || i.src, srcset: i.srcset || '', alt: decodeEntities(i.alt || p.name) })),
     categories,
     attributes: (p.attributes || []).map((a) => ({
       id: a.id,

@@ -68,8 +68,8 @@ export function productCard(p, { eager = false, size = '' } = {}) {
   return html`
     <article class="product-card ${size} reveal" data-product-id="${p.id}">
       <a class="product-card__media" href="${p.permalink}" aria-label="${p.name}">
-        ${img ? html`<img class="product-card__img" src="${img.src}" alt="${img.alt}" loading="${eager ? 'eager' : 'lazy'}" decoding="async" width="600" height="600">` : html`<span class="product-card__placeholder">Photo coming soon</span>`}
-        ${hover ? html`<img class="product-card__img product-card__img--alt" src="${hover.src}" alt="" loading="lazy" decoding="async" width="600" height="600" aria-hidden="true">` : ''}
+        ${img ? html`<img class="product-card__img" src="${img.thumb}" ${img.srcset ? raw(`srcset="${img.srcset}" sizes="(max-width: 40em) 50vw, (max-width: 64em) 33vw, 24vw"`) : ''} alt="${img.alt}" loading="${eager ? 'eager' : 'lazy'}" ${eager ? raw('fetchpriority="high"') : ''} decoding="async" width="600" height="600">` : html`<span class="product-card__placeholder">Photo coming soon</span>`}
+        ${hover ? html`<img class="product-card__img product-card__img--alt" src="${hover.thumb}" ${hover.srcset ? raw(`srcset="${hover.srcset}" sizes="(max-width: 40em) 50vw, (max-width: 64em) 33vw, 24vw"`) : ''} alt="" loading="lazy" decoding="async" width="600" height="600" aria-hidden="true">` : ''}
         ${badge(p)}
       </a>
       <div class="product-card__body">
@@ -121,7 +121,7 @@ export function collectionCard(c, { size = '' } = {}) {
   return html`
     <a class="collection-card ${size} reveal" href="/product-category/${c.slug}/">
       <span class="collection-card__media">
-        ${c.image ? html`<img src="${c.image}" alt="" loading="lazy" decoding="async" width="800" height="800">` : ''}
+        ${c.image ? html`<img src="${c.thumb || c.image}" ${c.srcset ? raw(`srcset="${c.srcset}" sizes="(max-width: 64em) 50vw, 33vw"`) : ''} alt="" loading="lazy" decoding="async" width="800" height="800">` : ''}
       </span>
       <span class="collection-card__body">
         <span class="collection-card__title">${c.name}</span>
@@ -133,7 +133,7 @@ export function collectionCard(c, { size = '' } = {}) {
 export function recipeCard(r) {
   return html`
     <a class="recipe-card reveal" href="/recipes/${r.slug}/">
-      <span class="recipe-card__media">${r.image ? html`<img src="${r.image}" alt="${r.title}" loading="lazy" decoding="async" width="800" height="1000">` : ''}</span>
+      <span class="recipe-card__media">${r.image ? html`<img src="${r.imageThumb || r.image}" ${r.srcset ? raw(`srcset="${r.srcset}" sizes="(max-width: 48em) 50vw, 33vw"`) : ''} alt="${r.title}" loading="lazy" decoding="async" width="800" height="1000">` : ''}</span>
       <span class="recipe-card__body">
         <span class="recipe-card__meta">${r.category || 'Recipe'}${r.time ? html` · ${r.time}` : ''}</span>
         <span class="recipe-card__title">${r.title}</span>
@@ -190,8 +190,15 @@ export function breadcrumbLd(items, origin) {
 
 export function picture({ src, alt = '', ratio = '', cls = '', eager = false, width, height, sizes }) {
   return html`<figure class="media ${cls}" ${ratio ? raw(`style="--ratio:${ratio}"`) : ''}>
-    <img src="${src}" alt="${alt}" loading="${eager ? 'eager' : 'lazy'}" decoding="async" ${width ? raw(`width="${width}"`) : ''} ${height ? raw(`height="${height}"`) : ''} ${sizes ? raw(`sizes="${sizes}"`) : ''}>
+    <img src="${src}" ${raw(srcsetAttr(src, sizes || '(max-width: 64em) 100vw, 50vw'))} alt="${alt}" loading="${eager ? 'eager' : 'lazy'}" decoding="async" ${width ? raw(`width="${width}"`) : ''} ${height ? raw(`height="${height}"`) : ''}>
   </figure>`;
+}
+
+// srcset/sizes for a /media/*.webp path produced by the build (480 / 960 / full variants).
+export function srcsetAttr(src, sizes = '100vw') {
+  if (!src || !/^\/media\/.+\.webp$/.test(src)) return '';
+  const base = src.slice(0, -5);
+  return `srcset="${base}-480.webp 480w, ${base}-960.webp 960w, ${src} 1400w" sizes="${sizes}"`;
 }
 
 // Clearly labelled placeholder for photography that does not exist yet.

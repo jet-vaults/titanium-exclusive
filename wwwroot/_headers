@@ -1,0 +1,6 @@
+# Long-lived caching for fingerprinted/static files. Asset URLs carry ?v= and media files
+# are content-stable, so both can be cached aggressively.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/media/*
+  Cache-Control: public, max-age=31536000, immutable

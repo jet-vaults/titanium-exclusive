@@ -7,7 +7,7 @@ import { BRAND, NAV, FOOTER_LINKS } from '../content/brand.js';
 import { getCategories, getAllProducts, featuredProducts } from '../lib/store.js';
 import { ICON, button } from './components.js';
 
-const ASSET_VERSION = '1';
+export const ASSET_VERSION = '3';
 
 export async function shellData(c) {
   const [categories, products] = await Promise.all([getCategories(c.ctx), getAllProducts(c.ctx, c.currency)]);
@@ -29,6 +29,7 @@ export function page(c, {
   shell,
   status = 200,
   headerTheme = 'light',
+  preloadImage = null,
 }) {
   const fullTitle = title ? `${title} — ${SITE.name}` : `${SITE.name} — ${SITE.tagline}`;
   const canonical = SITE.canonicalOrigin + canonicalPath;
@@ -52,10 +53,11 @@ ${noindex ? raw('<meta name="robots" content="noindex,follow">') : ''}
 <meta name="theme-color" content="#f5f2ec">
 <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
-<link rel="preload" href="/assets/fonts/newsreader-italic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/site.css?v=${ASSET_VERSION}">
 <link rel="preload" href="/assets/fonts/newsreader.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/site.css?v=${ASSET_VERSION}">
+${preloadImage ? raw(`<link rel="preload" as="image" href="${preloadImage.src}"${preloadImage.srcset ? ` imagesrcset="${preloadImage.srcset}" imagesizes="${preloadImage.sizes || '100vw'}"` : ''} fetchpriority="high">`) : ''}
+${['ui', 'nav', 'motion', 'cart', 'search', 'currency'].map((m) => raw(`<link rel="modulepreload" href="/assets/js/${m}.js?v=${ASSET_VERSION}">`))}
 ${raw(head)}
 ${ld.map((o) => jsonLd(o))}
 </head>
@@ -129,7 +131,7 @@ function megaMenu(cats, featured) {
         <p class="mega__heading">Cookware</p>
         <ul class="mega__list">
           ${primary.map((cat) => html`<li><a class="mega__cat" href="/product-category/${cat.slug}/">
-            <span class="mega__thumb">${cat.image ? html`<img src="${cat.image}" alt="" loading="lazy" width="96" height="96">` : ''}</span>
+            <span class="mega__thumb">${cat.image ? html`<img src="${cat.thumb || cat.image}" alt="" loading="lazy" width="96" height="96">` : ''}</span>
             <span class="mega__cat-text"><span class="mega__cat-name">${cat.name}</span><span class="mega__cat-count">${cat.count} pieces</span></span>
           </a></li>`)}
         </ul>
@@ -146,7 +148,7 @@ function megaMenu(cats, featured) {
       <div class="mega__col mega__col--spot">
         ${spotlight ? html`
           <a class="mega__spot" href="${spotlight.permalink}">
-            <span class="mega__spot-media"><img src="${spotlight.images[0] ? spotlight.images[0].src : ''}" alt="" loading="lazy" width="400" height="400"></span>
+            <span class="mega__spot-media"><img src="${spotlight.images[0] ? spotlight.images[0].thumb : ''}" alt="" loading="lazy" width="400" height="400"></span>
             <span class="mega__spot-body">
               <span class="eyebrow">Most reviewed</span>
               <span class="mega__spot-title">${spotlight.name}</span>

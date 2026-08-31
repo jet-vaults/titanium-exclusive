@@ -1,7 +1,7 @@
 import { html, raw } from '../lib/html.js';
 import { SITE, PRIMARY_COLLECTIONS } from '../config.js';
 import { page, shellData } from '../ui/layout.js';
-import { button, textLink, sectionHead, productCard, collectionCard, recipeCard, reviewCard, accordion, ICON } from '../ui/components.js';
+import { button, textLink, sectionHead, productCard, collectionCard, recipeCard, reviewCard, accordion, ICON, srcsetAttr } from '../ui/components.js';
 import { getReviews, featuredProducts } from '../lib/store.js';
 import { getRecipes } from '../lib/recipes.js';
 import { BRAND, PROOF, VIDEOS, IMG } from '../content/brand.js';
@@ -36,6 +36,7 @@ export async function renderHome(c) {
     description: 'Titanium Exclusive: hand-cast titanium non-stick cookware from Germany since 1995. 8 mm cast base, little or no oil, oven-safe, 20-year warranty. Ships across Canada and the US.',
     body,
     bodyClass: 'page-home',
+    preloadImage: { src: IMG.panTexture, srcset: `${IMG.panTexture.slice(0, -5)}-480.webp 480w, ${IMG.panTexture.slice(0, -5)}-960.webp 960w, ${IMG.panTexture} 1400w`, sizes: '(max-width: 64em) 100vw, 46vw' },
     ld: [organizationLd(), websiteLd(), faqLd(faq)],
   });
 }
@@ -63,10 +64,10 @@ function hero() {
       </div>
       <div class="hero__media">
         <div class="hero__main">
-          <img src="${IMG.panTexture}" alt="The cast titanium cooking surface of a Titanium Exclusive frying pan" width="1000" height="800" fetchpriority="high" decoding="async" data-parallax="7">
+          <img src="${IMG.panTexture}" ${raw(srcsetAttr(IMG.panTexture, '(max-width: 64em) 100vw, 46vw'))} alt="The cast titanium cooking surface of a Titanium Exclusive frying pan" width="1000" height="800" fetchpriority="high" decoding="async" data-parallax="7">
         </div>
         <div class="hero__inset">
-          <img src="${IMG.pour}" alt="Molten aluminium alloy being ladled into a mould by hand" width="1000" height="1000" loading="lazy" decoding="async">
+          <img src="${IMG.pour.slice(0, -5)}-480.webp" alt="Molten aluminium alloy being ladled into a mould by hand" width="480" height="480" loading="lazy" decoding="async">
         </div>
         <p class="hero__caption">Poured by hand in a German foundry.</p>
       </div>
@@ -110,7 +111,7 @@ function anatomy() {
     <div class="container anatomy__grid">
       <div class="anatomy__figure reveal">
         <div class="anatomy__img">
-          <img src="${IMG.panTexture}" alt="Cross-section view of a Titanium Exclusive pan showing the cooking surface, rim and handle" width="1000" height="800" loading="lazy" decoding="async">
+          <img src="${IMG.panTexture}" ${raw(srcsetAttr(IMG.panTexture, '(max-width: 64em) 100vw, 46vw'))} alt="Cross-section view of a Titanium Exclusive pan showing the cooking surface, rim and handle" width="1000" height="800" loading="lazy" decoding="async">
         </div>
         ${FEATURES.filter((f) => f.x != null).map((f, i) => html`<button class="hotspot" type="button" style="left:${f.x}%;top:${f.y}%" data-hotspot="${f.key}" aria-label="${f.title}">${i + 1}</button>`)}
       </div>
@@ -163,12 +164,12 @@ function madeSection() {
       ${sectionHead({ eyebrow: 'How it is made', title: 'Five steps between a German foundry <em class="accent">and your stove.</em>', link: { href: '/support/videos/', label: 'Watch the factory film' } })}
       <div class="story" data-story>
         <div class="story__media" aria-hidden="true">
-          ${STEPS.map((s) => html`<img src="${s.img}" alt="" loading="lazy" decoding="async" data-step-img>`)}
+          ${STEPS.map((s) => html`<img src="${s.img}" ${raw(srcsetAttr(s.img, '46vw'))} alt="" loading="lazy" decoding="async" data-step-img>`)}
         </div>
         <div class="story__steps">
           ${STEPS.map((s, i) => html`
             <div class="story__step" data-step>
-              <div class="story__mobile-img"><img src="${s.img}" alt="${s.alt}" loading="lazy" decoding="async"></div>
+              <div class="story__mobile-img"><img src="${s.img.slice(0, -5)}-960.webp" alt="${s.alt}" loading="lazy" decoding="async" width="960" height="720"></div>
               <span class="story__num">0${i + 1}</span>
               <h3 class="story__title">${s.title}</h3>
               <p class="story__text">${s.text}</p>
@@ -215,7 +216,7 @@ export function videoCard(v, { hero = false } = {}) {
   return html`
     <div class="reveal">
       <div class="video ${hero ? 'video--hero' : ''}" data-video="${v.id}" data-title="${v.title}" role="button" tabindex="0" aria-label="Play video: ${v.title}">
-        <img src="/media/video/${v.id}.jpg" alt="" loading="lazy" decoding="async" width="480" height="360">
+        <img src="/media/video/${v.id}.webp" alt="" loading="lazy" decoding="async" width="480" height="360">
         <span class="video__play"><span class="video__play-btn">${raw(ICON.play)}</span></span>
       </div>
       <div class="video__caption"><span class="video__kind">${v.kind}</span><span class="video__title">${v.title}</span></div>
@@ -263,7 +264,7 @@ function faqSection(faq) {
 function finale() {
   return html`
   <section class="finale">
-    <div class="finale__bg"><img src="${IMG.sparksWide}" alt="" loading="lazy" decoding="async" width="1500" height="450"></div>
+    <div class="finale__bg"><img src="${IMG.sparksWide}" ${raw(srcsetAttr(IMG.sparksWide, '100vw'))} alt="" loading="lazy" decoding="async" width="1400" height="420"></div>
     <div class="container finale__text">
       <p class="eyebrow">Since ${BRAND.since}</p>
       <h2 class="finale__title">Twenty years from now, still the pan you reach for.</h2>

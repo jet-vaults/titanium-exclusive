@@ -1,7 +1,7 @@
 // Cart: kept in the browser (localStorage) until a checkout back-end is connected.
 // Lines carry a snapshot of name / price / options so the drawer renders instantly;
 // prices are re-validated against /api/product/ when the cart is opened.
-import { $, $$, toast, openDialog, lockScroll, unlockScroll, money, decode } from './ui.js';
+import { $, $$, toast, openDialog, lockScroll, unlockScroll, money, decode } from './ui.js?v=3';
 
 const KEY = 'te-cart-v1';
 let cart = load();

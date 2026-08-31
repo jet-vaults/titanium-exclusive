@@ -890,29 +890,27 @@ textarea.input { min-height: 9rem; resize: vertical; }
 .reveal--mask img { transform: scale(1.06); transition: transform 1.4s var(--ease-out); }
 .reveal--mask.is-visible::after { transform: scaleY(0); }
 .reveal--mask.is-visible img { transform: none; }
-.hero__title .line > span { transform: translateY(110%); transition: transform .9s var(--ease-out); transition-delay: calc(var(--i, 0) * 90ms + 80ms); }
+.hero__title .line > span { transform: translateY(110%); transition: transform .8s var(--ease-out); transition-delay: calc(var(--i, 0) * 70ms); }
 .is-loaded .hero__title .line > span { transform: none; }
 .hero__lead, .hero__actions, .hero__proof { opacity: 0; transform: translateY(12px); transition: opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease); }
 .is-loaded .hero__lead { opacity: 1; transform: none; transition-delay: 380ms; }
 .is-loaded .hero__actions { opacity: 1; transform: none; transition-delay: 470ms; }
 .is-loaded .hero__proof { opacity: 1; transform: none; transition-delay: 560ms; }
-.hero__main { clip-path: inset(0 0 0 100%); transition: clip-path 1.1s var(--ease-out) 120ms; }
-.is-loaded .hero__main { clip-path: inset(0 0 0 0); }
+.hero__main { transform: scale(1.04); transition: transform 1.6s var(--ease-out); }
+.is-loaded .hero__main { transform: none; }
 .hero__inset { opacity: 0; transform: translateY(16px); transition: opacity var(--dur-slow) var(--ease) 800ms, transform var(--dur-slow) var(--ease) 800ms; }
 .is-loaded .hero__inset { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .reveal, .hero__lead, .hero__actions, .hero__proof, .hero__inset { opacity: 1; transform: none; }
   .hero__title .line > span { transform: none; }
-  .hero__main { clip-path: none; }
-  .reveal--mask::after { display: none; }
+    .reveal--mask::after { display: none; }
   .reveal--mask img { transform: none; }
   .story__media img { transform: none; }
 }
 .no-js .reveal, .no-js .hero__lead, .no-js .hero__actions, .no-js .hero__proof, .no-js .hero__inset { opacity: 1; transform: none; }
 .no-js .hero__title .line > span { transform: none; }
-.no-js .hero__main { clip-path: none; }
-.no-js .reveal--mask::after { display: none; }
+.no-js .no-js .reveal--mask::after { display: none; }
 
 /* ---------- Print -------------------------------------------------------- */
 @media print {

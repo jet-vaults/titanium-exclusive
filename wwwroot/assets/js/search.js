@@ -1,5 +1,5 @@
 // Predictive search overlay backed by the edge /api/search/ endpoint.
-import { $, $$, openDialog, lockScroll, unlockScroll, debounce } from './ui.js';
+import { $, $$, openDialog, lockScroll, unlockScroll, debounce } from './ui.js?v=3';
 
 export function initSearch() {
   const root = $('[data-search]');

@@ -16,7 +16,13 @@ export default {
 
     // Static files never go through the router.
     if (path.startsWith('/assets/') || path.startsWith('/media/') || path === '/favicon.ico' || path === '/robots.txt' || path.startsWith('/.well-known/')) {
-      return env.ASSETS.fetch(request);
+      const res = await env.ASSETS.fetch(request);
+      if (res.status === 200 && (path.startsWith('/assets/') || path.startsWith('/media/'))) {
+        const out = new Response(res.body, res);
+        out.headers.set('cache-control', 'public, max-age=31536000, immutable');
+        return out;
+      }
+      return res;
     }
     if (path === '/sitemap.xml') return routes.sitemap(makeCtx(request, env, ctx, url));
 

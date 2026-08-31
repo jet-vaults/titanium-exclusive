@@ -1,7 +1,7 @@
 import { html, raw, money, truncate, textOf } from '../lib/html.js';
 import { SITE } from '../config.js';
 import { page, shellData } from '../ui/layout.js';
-import { productCard, breadcrumbs, breadcrumbLd, stars, price as priceHtml, accordion, ICON, textLink, button } from '../ui/components.js';
+import { productCard, breadcrumbs, breadcrumbLd, stars, price as priceHtml, accordion, ICON, textLink, button, srcsetAttr } from '../ui/components.js';
 import { getProductAddons, getProductReviews, relatedProducts, matchingLid, sizeOptions } from '../lib/store.js';
 import { FAMILY_USE, familyKey } from '../content/collections.js';
 import { FAQ } from '../content/faq.js';
@@ -137,6 +137,7 @@ export async function renderProduct(c, { slug }) {
     ogType: 'product',
     bodyClass: 'page-product',
     scripts: ['/assets/js/product.js'],
+    preloadImage: product.images[0] ? { src: product.images[0].src, srcset: product.images[0].srcset, sizes: '(max-width: 64em) 100vw, 50vw' } : null,
     ld: [breadcrumbLd(crumbs, SITE.canonicalOrigin), productLd(product, reviews, lead)],
     body,
   });
@@ -153,10 +154,10 @@ function gallery(product) {
         ${imgs.map((im, i) => html`<button class="gallery__thumb ${i === 0 ? 'is-active' : ''}" type="button" data-full="${im.src}" data-alt="${im.alt}" aria-label="Image ${i + 1}"><img src="${im.thumb || im.src}" alt="" width="72" height="72" loading="lazy"></button>`)}
       </div>
       <div class="gallery__main">
-        ${first.src ? html`<img src="${first.src}" alt="${first.alt}" width="1000" height="800" fetchpriority="high" decoding="async">` : html`<span class="product-card__placeholder">Photo coming soon</span>`}
+        ${first.src ? html`<img src="${first.src}" ${raw(srcsetAttr(first.src, '(max-width: 64em) 100vw, 50vw'))} alt="${first.alt}" width="1000" height="800" fetchpriority="high" decoding="async">` : html`<span class="product-card__placeholder">Photo coming soon</span>`}
       </div>
       <div class="gallery__track" aria-label="Product images">
-        ${imgs.map((im, i) => html`<img src="${im.src}" alt="${im.alt}" width="1000" height="800" ${i === 0 ? raw('fetchpriority="high"') : raw('loading="lazy"')} decoding="async">`)}
+        ${imgs.map((im, i) => html`<img src="${im.src.slice(0, -5)}-960.webp" alt="${im.alt}" width="960" height="768" ${i === 0 ? raw('fetchpriority="high"') : raw('loading="lazy"')} decoding="async">`)}
       </div>
       ${imgs.length > 1 ? html`<div class="gallery__dots" aria-hidden="true">${imgs.map((_, i) => html`<span class="${i === 0 ? 'is-active' : ''}"></span>`)}</div>` : ''}
     </div>`;
