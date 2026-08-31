@@ -1,0 +1,10 @@
+{
+  "name": "titanium-exclusive",
+  "private": true,
+  "type": "module",
+  "description": "Titanium Exclusive storefront: static assets + Cloudflare Pages edge worker in wwwroot/",
+  "scripts": {
+    "dev": "wrangler pages dev wwwroot --compatibility-date=2026-08-01 --port 8788",
+    "check": "node --check wwwroot/_worker.js/index.js"
+  }
+}
