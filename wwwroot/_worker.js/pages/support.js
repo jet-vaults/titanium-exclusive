@@ -35,7 +35,6 @@ export async function renderSupport(c) {
         <div class="hub" data-stagger>
           ${Object.entries(TOPICS).map(([slug, t]) => html`<a class="hub__card reveal" href="/support/${slug}/"><h2 class="hub__title">${t.title}</h2><p class="hub__text">${t.short}</p><span class="link-arrow link-arrow--sm"><span>Open</span>${raw(ICON.arrow)}</span></a>`)}
           <a class="hub__card reveal" href="/contact/"><h2 class="hub__title">Contact</h2><p class="hub__text">Phone, email and a form. Toronto, Ontario.</p><span class="link-arrow link-arrow--sm"><span>Open</span>${raw(ICON.arrow)}</span></a>
-          <a class="hub__card reveal" href="/my-account/"><h2 class="hub__title">My account</h2><p class="hub__text">Orders, addresses and account details.</p><span class="link-arrow link-arrow--sm"><span>Open</span>${raw(ICON.arrow)}</span></a>
         </div>
       </section>
       <section class="section section--line">

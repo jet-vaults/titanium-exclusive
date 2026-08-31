@@ -1,7 +1,7 @@
 import { html, money, truncate } from '../lib/html.js';
 import { page, shellData } from '../ui/layout.js';
 import { productCard, breadcrumbs, recipeCard, textLink } from '../ui/components.js';
-import { getAllProducts, searchProducts, matchingLid, getCategories } from '../lib/store.js';
+import { getAllProducts, searchProducts, matchingLid, getCategories, cartLineData } from '../lib/store.js';
 import { getRecipes } from '../lib/recipes.js';
 import { FAQ } from '../content/faq.js';
 
@@ -59,6 +59,15 @@ export async function suggestApi(c) {
   const pad = products.find((x) => x.slug === 'titanium-cleaner-no-warranty');
   if (pad && !inCart.has(pad.id) && pad.inStock && ids.length) return json({ title: 'Recommended for every wash', product: { id: pad.id, name: pad.name.replace(/\s*\(no warranty\)/i, ''), image: pad.images[0] ? pad.images[0].thumb : '', price: money(pad.price, pad.currency, pad.minorUnit), url: pad.permalink } });
   return json({});
+}
+
+// Product data for the client-side cart (quick add, revalidation).
+export async function productApi(c) {
+  const id = Number(c.url.searchParams.get('id'));
+  const products = await getAllProducts(c.ctx, c.currency);
+  const p = products.find((x) => x.id === id);
+  if (!p) return json({});
+  return json(cartLineData(p));
 }
 
 function json(data) {

@@ -1,5 +1,6 @@
 // Central configuration for the Titanium Exclusive edge worker.
-// Everything that ties the static front-end to the WooCommerce back-end lives here.
+// The site is fully standalone: catalog, reviews, recipes and media live in this repository
+// (see data/catalog.js and wwwroot/media/). No request ever reaches the previous website.
 
 export const SITE = {
   name: 'Titanium Exclusive',
@@ -10,50 +11,12 @@ export const SITE = {
   defaultCurrency: 'CAD',
   currencies: ['CAD', 'USD'],
   locale: 'en-CA',
+  // Shopper's currency choice is remembered in this cookie.
+  currencyCookie: 'te_currency',
 };
 
-export const WP = {
-  // The WooCommerce origin. WordPress keeps titaniumexclusive.com as its site URL,
-  // so we always request that host from the origin server.
-  originUrl: 'https://titaniumexclusive.com',
-  // Once the zone is on Cloudflare and titaniumexclusive.com points at Pages,
-  // requests must resolve to the hosting server instead of looping back here.
-  // Create a proxied DNS record "origin.titaniumexclusive.com" -> 185.160.66.193
-  // and set this to that hostname. Leave null while DNS still points at the host.
-  resolveOverride: null,
-  // Request paths that are passed straight through to WordPress/WooCommerce.
-  // The new front-end owns everything else.
-  proxyPrefixes: [
-    '/wp-json/',
-    '/wp-content/',
-    '/wp-includes/',
-    '/wp-admin/',
-    '/wp-login.php',
-    '/wp-cron.php',
-    '/xmlrpc.php',
-    '/checkout/',
-    '/checkout',
-    '/my-account/',
-    '/my-account',
-    '/order-received/',
-    '/wc-api/',
-    '/feed/',
-    '/gift-cards/',
-    '/apple-developer-merchantid-domain-association',
-    '/.well-known/apple-developer-merchantid-domain-association',
-  ],
-  // Query-string driven WooCommerce endpoints (AJAX, add-to-cart) on any path.
-  proxyQueryKeys: ['wc-ajax', 'add-to-cart', 'wc-api', 'removed_item', 'undo_item', 'key', 'order-pay', 'order-received', 'wmc-currency'],
-  currencyCookie: 'wmc_current_currency',
-  // Store API cache lifetime at the edge (seconds). Changes made in WooCommerce
-  // (prices, stock, new products) appear on the front-end within this window.
-  catalogTtl: 300,
-  // Product add-on definitions are scraped from the WooCommerce product page.
-  addonsTtl: 3600,
-};
-
-// Old WordPress URLs that no longer exist on the new front-end.
-// Product and product-category URLs are preserved as-is and need no redirect.
+// Old WordPress URLs that no longer exist on the new site.
+// Product, product-category and recipe URLs are preserved as-is and need no redirect.
 export const REDIRECTS = {
   '/company/': '/our-story/',
   '/about-us/': '/our-story/',
@@ -74,10 +37,11 @@ export const REDIRECTS = {
   '/author/mishkat/': '/',
   '/lids.html': '/product-category/lids/',
   '/product/default_gift_this_product/': '/product/titanium-gift-card/',
+  '/my-account/': '/contact/',
 };
 
 // Cookware categories shown in navigation, in merchandising order.
-// Slugs match WooCommerce product_cat slugs, so /product-category/<slug>/ keeps working.
+// Slugs match the old product_cat slugs, so /product-category/<slug>/ keeps working.
 export const COLLECTIONS = [
   { slug: 'titanium-frying-pans', name: 'Frying Pans', short: 'Frying Pans' },
   { slug: 'titanium-sauce-pans', name: 'Sauce Pans', short: 'Sauce Pans' },
@@ -101,4 +65,10 @@ export const PRIMARY_COLLECTIONS = COLLECTIONS.slice(0, 9);
 export const CONTACT = {
   endpoint: '',
   accessKey: '',
+};
+
+// Checkout is not connected yet. When a commerce back-end is ready, point this at it and the
+// cart's Checkout button will hand the order over. Until then /checkout/ shows a clear notice.
+export const CHECKOUT = {
+  url: '',
 };

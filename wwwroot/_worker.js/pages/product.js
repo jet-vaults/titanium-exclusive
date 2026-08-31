@@ -27,6 +27,7 @@ export async function renderProduct(c, { slug }) {
   const isCookware = product.family === 'cookware' || product.family === 'set';
   const config = {
     id: product.id, name: product.name, permalink: product.permalink, price: product.price, currency: product.currency, minorUnit: product.minorUnit,
+    image: product.images[0] ? product.images[0].thumb : '', max: product.addToCart.maximum || 99, soldIndividually: product.soldIndividually,
     inStock: product.inStock, hasAddons: addons.length > 0,
     variations: product.type === 'variable' ? product.variations.map((v) => ({ id: v.id, attributes: v.attributes.map((a) => ({ name: a.name, value: a.value })) })) : [],
   };
@@ -36,7 +37,7 @@ export async function renderProduct(c, { slug }) {
       <div class="pdp__crumbs">${breadcrumbs(crumbs)}</div>
       <div class="pdp">
         ${gallery(product)}
-        <form class="buy" data-buy-form data-product="${JSON.stringify(config)}" method="post" action="${product.permalink}">
+        <form class="buy" data-buy-form data-product="${JSON.stringify(config)}" action="/cart/" method="get">
           <div class="buy__head">
             <div class="buy__kicker">
               ${category ? html`<a href="/product-category/${category.slug}/">${category.name}</a>` : ''}
@@ -76,8 +77,8 @@ export async function renderProduct(c, { slug }) {
 
           <div class="buy__cta">
             ${product.type === 'gift-card' ? html`
-              <p class="muted" style="font-size:var(--text-sm)">Choose the amount and recipient on the secure gift card page.</p>
-              ${button({ href: `/product/${product.slug}/?wc-gift-card=1`, label: 'Buy a gift card', variant: 'primary', size: 'block', attrs: 'data-proxy-link' })}
+              <p class="muted" style="font-size:var(--text-sm)">Gift cards are issued by us directly: tell us the amount and the recipient and we send it by email.</p>
+              ${button({ href: '/contact/', label: 'Request a gift card', variant: 'primary', size: 'block' })}
             ` : html`
               <div class="buy__row">
                 <div class="qty qty--lg" aria-label="Quantity">
@@ -181,7 +182,7 @@ function addonGroup(addon, product, lid) {
       <div class="opt-group__label"><span>${label}</span><small>Optional</small></div>
       ${addon.options.map((o) => html`
         <label class="choice">
-          <input type="${addon.options.length > 1 && o.type === 'radio' ? 'radio' : 'checkbox'}" name="${o.field}" value="${o.value}" data-addon-price="${o.price}">
+          <input type="${addon.options.length > 1 && o.type === 'radio' ? 'radio' : 'checkbox'}" name="${o.field}" value="${o.value}" data-addon-price="${o.price}" data-addon-label="${addon.key === 'lid' ? 'With glass lid' : addon.key === 'induction' ? 'Induction-ready' : `${addon.name}: ${o.label}`}">
           <span class="choice__text"><span class="choice__title">${addon.key === 'lid' ? 'Add the lid' : addon.key === 'induction' ? 'Make it induction-ready' : o.label}</span>${help ? html`<span class="choice__desc">${help}</span>` : ''}</span>
           <span class="choice__price">${o.price ? `+ ${money(Math.round(o.price * 100), product.currency, product.minorUnit)}` : 'Included'}</span>
         </label>`)}

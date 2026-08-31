@@ -1,7 +1,9 @@
 import { html } from '../lib/html.js';
+import { CHECKOUT } from '../config.js';
 import { page, shellData } from '../ui/layout.js';
 import { button, breadcrumbs, productCard, sectionHead } from '../ui/components.js';
 import { featuredProducts } from '../lib/store.js';
+import { BRAND } from '../content/brand.js';
 
 export async function renderCart(c) {
   const shell = await shellData(c);
@@ -30,10 +32,9 @@ export async function renderCart(c) {
         <aside class="cart-page__summary" data-cart-page-summary hidden>
           <h2>Summary</h2>
           <div class="cart-totals__row"><span>Subtotal</span><strong data-cart-page-subtotal></strong></div>
-          <div class="cart-totals__row" data-cart-page-discount hidden><span>Discount</span><strong></strong></div>
-          <p class="cart-totals__note">Shipping and taxes are calculated at checkout. Coupons and gift cards can be applied there.</p>
-          ${button({ href: '/checkout/', label: 'Proceed to checkout', size: 'block' })}
-          <p class="muted" style="font-size:var(--text-xs);text-align:center">Secure checkout · 20-year warranty on every cast piece</p>
+          <p class="cart-totals__note">Shipping and taxes are calculated when you check out.</p>
+          ${button({ href: CHECKOUT.url || '/checkout/', label: 'Proceed to checkout', size: 'block' })}
+          <p class="muted" style="font-size:var(--text-xs);text-align:center">20-year warranty on every cast piece</p>
         </aside>
       </div>
       <section class="section section--line">
@@ -42,5 +43,37 @@ export async function renderCart(c) {
           <div class="grid grid--4 grid--products" data-stagger>${picks.map((p) => productCard(p))}</div>
         </div>
       </section>`,
+  });
+}
+
+// Placeholder until a commerce back-end is connected (see CHECKOUT in config.js).
+export async function renderCheckout(c) {
+  if (CHECKOUT.url) return Response.redirect(CHECKOUT.url, 302);
+  const shell = await shellData(c);
+  return page(c, {
+    shell,
+    title: 'Checkout',
+    description: 'Complete your Titanium Exclusive order.',
+    noindex: true,
+    bodyClass: 'page-checkout',
+    body: html`
+      <section class="container page-hero">
+        ${breadcrumbs([{ label: 'Home', href: '/' }, { label: 'Cart', href: '/cart/' }, { label: 'Checkout', href: '/checkout/' }])}
+        <h1 class="page-hero__title">Almost <em class="accent">there.</em></h1>
+        <p class="lead">Online checkout is being connected. Until it is live, we take orders by phone and email — call ${BRAND.phoneTollFree} or write to <a href="mailto:${BRAND.email}" style="text-decoration:underline">${BRAND.email}</a> with the pieces below and we will confirm the total, shipping and payment with you directly.</p>
+      </section>
+      <div class="container cart-page" style="padding-bottom:var(--section)">
+        <div class="cart-page__summary" style="position:static">
+          <h2>Your order</h2>
+          <div data-checkout-summary></div>
+        </div>
+        <div>
+          <div class="btn-row">
+            ${button({ href: `tel:${BRAND.phoneTollFreeTel}`, label: `Call ${BRAND.phoneTollFree}`, size: 'lg' })}
+            ${button({ href: '/contact/', label: 'Send a message', variant: 'secondary', size: 'lg' })}
+          </div>
+          <p class="muted" style="margin-top:1.5rem;font-size:var(--text-sm)">Your cart is saved in this browser and will be here when you return.</p>
+        </div>
+      </div>`,
   });
 }

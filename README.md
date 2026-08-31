@@ -25,33 +25,37 @@ louis.ns.cloudflare.com
 
 ## How it works
 
+The site is **standalone**. Nothing on it talks to the previous WordPress/WooCommerce website.
+
 ```
 Browser ──► Cloudflare Pages (this repo, wwwroot/)
-              ├── _worker.js/   edge worker
-              │     ├── renders storefront pages from the WooCommerce Store API (5-min cache)
-              │     └── proxies /wp-json, /wp-content, /wp-admin, /checkout, /my-account,
-              │         ?wc-ajax, ?add-to-cart and every non-GET request to WordPress
-              └── assets/       CSS, JS, fonts, images
-WordPress + WooCommerce (A2 Hosting, 185.160.66.193) — unchanged; still the CMS and checkout
+              ├── _worker.js/      edge worker: renders every page from data/catalog.js
+              │     └── data/catalog.js   products, prices, add-ons, categories, reviews, recipes, legal pages
+              ├── media/           all product, brand, recipe images and video thumbnails (local copies)
+              └── assets/          CSS, JS, fonts, icons
 ```
 
-- Products, prices, stock, add-ons (lid / induction), coupons, taxes, shipping, payments, orders and customer accounts stay in WooCommerce. Nothing is hard-coded.
-- `/product/<slug>/`, `/product-category/<slug>/`, `/recipes/<slug>/`, `/shop/`, `/cart/`, `/checkout/`, `/my-account/` keep their existing URLs. Renamed pages are 301-redirected (`_worker.js/config.js` → `REDIRECTS`).
-- Currency follows the WooCommerce Multi Currency cookie (`wmc_current_currency`, CAD/USD).
-- Recipes are read from the Cooked plugin via `/wp-json/wp/v2/cooked_recipe`.
+- **Catalog** — `wwwroot/_worker.js/data/catalog.js` is a snapshot of the old store taken on 2026-08-30 (70 products, 44 with lid/induction options, 13 categories, 8 reviews, 7 recipes). Edit it to change prices, stock, copy or images; changes publish on the next push.
+- **Cart** — kept in the shopper's browser (`localStorage`), with a drawer on every page and a full `/cart/` page. Prices are re-checked against the catalog when the drawer opens.
+- **Checkout** — `/checkout/` is a placeholder that shows the order and asks the shopper to call or email. When a commerce back-end is ready, set `CHECKOUT.url` in `_worker.js/config.js` and the Checkout button hands the cart over.
+- **Currency** — CAD/USD switch stored in the `te_currency` cookie. Both show the same figures, as the old store did.
+- **URLs** — `/product/<slug>/`, `/product-category/<slug>/`, `/recipes/<slug>/`, `/shop/`, `/cart/` are unchanged from the old site; renamed pages 301-redirect (`REDIRECTS` in `config.js`).
+- **Videos** — YouTube embeds load only when a visitor clicks play (thumbnails are local).
 
 ## Layout
 
 ```
 wwwroot/_worker.js/
-  index.js       router: assets → WooCommerce proxy → redirects → pages
-  config.js      site, origin, proxy rules, redirects, collections, contact form endpoint
+  index.js       router: static files → redirects → pages
+  config.js      site, redirects, collections, contact form endpoint, checkout URL
   routes.js      URL → page module
-  lib/           html templating, Store API client, proxy, cache, recipes
+  data/          catalog.js (the product data)
+  lib/           html templating, catalog access, recipes, currency
   ui/            layout shell (header, mega menu, drawers, footer) and components
   pages/         one module per page type
   content/       brand facts, FAQ, collection copy (all sourced from the old site — see docs/)
 wwwroot/assets/  css/site.css (design system), js/*.js (no dependencies), fonts/, img/
+wwwroot/media/   images (≈10 MB)
 docs/            content audit, reference notes, redesign plan, photography brief
 ```
 
@@ -61,20 +65,16 @@ docs/            content audit, reference notes, redesign plan, photography brie
 npm run dev      # wrangler pages dev wwwroot → http://127.0.0.1:8788
 ```
 
-The worker talks to the live WooCommerce origin, so the local site shows real products and a real (session-cookie) cart. Nothing is written to WooCommerce except normal cart sessions.
-
 ## Deploying
 
 Any push to `main` publishes to Cloudflare Pages. While the domain is not pointed, that only updates the `.pages.dev` preview.
 
 ## Go-live checklist (apex domain)
 
-1. In Cloudflare DNS for the zone, **recreate the mail records before switching nameservers** — mail is hosted on the same A2 server: `MX titaniumexclusive.com → mail.titaniumexclusive.com` and `A mail → 185.160.66.193` (DNS-only). Copy any SPF/DKIM TXT records from the A2 zone as well.
-2. Add a **proxied** `A origin → 185.160.66.193` record and set `WP.resolveOverride = 'origin.titaniumexclusive.com'` in `wwwroot/_worker.js/config.js`. Without this the worker would resolve titaniumexclusive.com to itself after the switch.
-3. Point the nameservers at the registrar.
-4. Run `activate-site.yml` from `jet-vaults/.github` once the zone is active.
-5. Confirm checkout end-to-end on the live domain (the WordPress checkout and account pages still render in the old theme — a minimal WooCommerce theme is a recommended follow-up).
-6. Optional: set the contact form endpoint (`CONTACT` in `config.js`). Until then the form opens a prefilled email.
+1. **Email first.** Mail for titaniumexclusive.com is hosted on the old A2 server. Before switching nameservers, recreate in the Cloudflare zone: `MX titaniumexclusive.com → mail.titaniumexclusive.com` and `A mail → 185.160.66.193` (DNS-only), plus any SPF/DKIM TXT records — or move email to a new provider.
+2. Point the nameservers at the registrar (`lia.ns.cloudflare.com`, `louis.ns.cloudflare.com`).
+3. Run `activate-site.yml` from `jet-vaults/.github` once the zone is active.
+4. Connect checkout (`CHECKOUT.url`) and the contact form endpoint (`CONTACT`) in `config.js` when ready.
 
 ## Photography brief
 

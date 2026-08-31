@@ -3,8 +3,8 @@
 import { renderHome } from './pages/home.js';
 import { renderShop, renderCategory } from './pages/shop.js';
 import { renderProduct } from './pages/product.js';
-import { renderCart } from './pages/cart.js';
-import { renderSearchPage, searchApi, suggestApi } from './pages/search.js';
+import { renderCart, renderCheckout } from './pages/cart.js';
+import { renderSearchPage, searchApi, suggestApi, productApi } from './pages/search.js';
 import { renderStory } from './pages/story.js';
 import { renderWhyTitanium } from './pages/why.js';
 import { renderRecipes, renderRecipe } from './pages/recipes.js';
@@ -23,10 +23,12 @@ export const routes = {
     route(/^\/product-category\/(?<slug>[^/]+)\/$/, renderCategory),
     route(/^\/product\/(?<slug>[^/]+)\/$/, renderProduct),
     route(/^\/cart\/$/, renderCart),
+    route(/^\/checkout\/$/, renderCheckout),
     route(/^\/search$/, renderSearchPage),
     route(/^\/search\/$/, renderSearchPage),
     route(/^\/api\/search\/$/, searchApi),
     route(/^\/api\/suggest\/$/, suggestApi),
+    route(/^\/api\/product\/$/, productApi),
     route(/^\/our-story\/$/, renderStory),
     route(/^\/why-titanium\/$/, renderWhyTitanium),
     route(/^\/recipes\/$/, renderRecipes),

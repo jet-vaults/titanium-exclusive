@@ -107,7 +107,6 @@ function header(c, shell) {
     </nav>
     <div class="site-header__actions">
       <button class="icon-btn" type="button" data-search-open aria-label="Search">${raw(ICON.search)}<span class="icon-btn__label">Search</span></button>
-      <a class="icon-btn site-header__account" href="/my-account/" aria-label="Account">${raw(ICON.user)}</a>
       <button class="icon-btn cart-btn" type="button" data-cart-open aria-label="Open cart" aria-controls="cart-drawer">${raw(ICON.bag)}<span class="cart-btn__count" data-cart-count hidden>0</span></button>
     </div>
   </div>
@@ -182,7 +181,6 @@ function mobileNav(cats) {
         ${NAV.filter((n) => !n.mega).map((n) => html`<a class="mobile-nav__link" href="${n.href}">${n.label}</a>`)}
       </nav>
       <div class="mobile-nav__foot">
-        <a href="/my-account/">${raw(ICON.user)} Account</a>
         <button type="button" data-cart-open>${raw(ICON.bag)} Cart</button>
         <a href="/support/">Support</a>
       </div>

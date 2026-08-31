@@ -1,42 +1,36 @@
-// WooCommerce Store API client with edge caching.
-// Product data is never hard-coded: everything comes from the live WooCommerce catalog.
+// Catalog access. All data comes from data/catalog.js (a snapshot of the former store),
+// normalised once per worker instance. No network calls.
 
-import { WP, COLLECTIONS } from '../config.js';
-import { cachedJson } from './cache.js';
-import { fetchOrigin } from './proxy.js';
+import catalog from '../data/catalog.js';
+import { COLLECTIONS } from '../config.js';
 import { textOf, decodeEntities } from './html.js';
 
-const API = '/wp-json/wc/store/v1';
-
-async function getJson(path, currency) {
-  const res = await fetchOrigin(path, {}, currency);
-  if (!res.ok) throw new Error(`Store API ${res.status} for ${path}`);
-  return res.json();
-}
+const cache = new Map();
 
 // ---- Catalog -----------------------------------------------------------------
 
-export async function getAllProducts(ctx, currency) {
-  const products = await cachedJson(ctx, `products:${currency}`, WP.catalogTtl, async () => {
-    const list = await getJson(`${API}/products?per_page=100&page=1&catalog_visibility=visible`, currency);
-    return list.map(normalizeProduct).filter((p) => p.purchasable || p.type === 'gift-card');
-  });
-  return products;
+export async function getAllProducts(_ctx, currency = 'CAD') {
+  const key = `products:${currency}`;
+  if (!cache.has(key)) {
+    cache.set(key, catalog.products.map((p) => normalizeProduct(p, currency)).filter((p) => p.purchasable || p.type === 'gift-card'));
+  }
+  return cache.get(key);
 }
 
-export async function getCategories(ctx) {
-  return cachedJson(ctx, 'categories', WP.catalogTtl, async () => {
-    const list = await getJson(`${API}/products/categories?per_page=100`, WP.defaultCurrency);
-    return list.map((c) => ({
+export async function getCategories() {
+  if (!cache.has('categories')) {
+    cache.set('categories', catalog.categories.map((c) => ({
       id: c.id,
       slug: c.slug,
       name: decodeEntities(c.name),
       description: textOf(c.description),
       count: c.count,
-      image: c.image ? c.image.src : null,
+      image: c.image,
+      thumb: c.thumb || c.image,
       order: Math.max(0, COLLECTIONS.findIndex((k) => k.slug === c.slug)),
-    })).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
-  });
+    })).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)));
+  }
+  return cache.get('categories');
 }
 
 export async function getProductBySlug(ctx, currency, slug) {
@@ -50,10 +44,9 @@ export async function getProductsInCategory(ctx, currency, categorySlug) {
   return all.filter((p) => p.categories.some((c) => c.slug === categorySlug));
 }
 
-export async function getReviews(ctx) {
-  return cachedJson(ctx, 'reviews', WP.catalogTtl, async () => {
-    const list = await getJson(`${API}/products/reviews?per_page=50&orderby=date&order=desc`, WP.defaultCurrency);
-    return list
+export async function getReviews() {
+  if (!cache.has('reviews')) {
+    cache.set('reviews', catalog.reviews
       .map((r) => ({
         id: r.id,
         rating: r.rating,
@@ -64,74 +57,39 @@ export async function getReviews(ctx) {
         productName: decodeEntities(r.product_name),
         productSlug: permalinkSlug(r.product_permalink),
       }))
-      // Product reviews are moderated in WooCommerce; skip entries that are clearly questions, not reviews.
-      .filter((r) => r.rating >= 4 && r.text.length > 20 && !/shipping to|is it possible|\?\s*$/i.test(r.text));
-  });
+      // Skip entries that are clearly questions posted as reviews.
+      .filter((r) => r.rating >= 4 && r.text.length > 20 && !/shipping to|is it possible|\?\s*$/i.test(r.text)));
+  }
+  return cache.get('reviews');
 }
 
 export async function getProductReviews(ctx, productId) {
-  const all = await getReviews(ctx);
+  const all = await getReviews();
   return all.filter((r) => r.productId === productId);
 }
 
-// ---- Product add-ons (WooCommerce Product Add-Ons) -------------------------
-// The plugin has no public REST endpoint, so the definitions are read from the
-// rendered WooCommerce product page and cached. They remain fully managed in WooCommerce.
-
-export async function getProductAddons(ctx, product) {
-  return cachedJson(ctx, `addons:${product.id}`, WP.addonsTtl, async () => {
-    try {
-      const res = await fetchOrigin(`/product/${product.slug}/`, { headers: { accept: 'text/html' } });
-      if (!res.ok) return [];
-      const page = await res.text();
-      return parseAddons(page);
-    } catch {
-      return [];
-    }
-  });
+// Product add-ons (lid / induction) captured from the former store, per product.
+export async function getProductAddons(_ctx, product) {
+  return product.addons || [];
 }
 
-export function parseAddons(page) {
-  const addons = [];
-  const wrapRe = /<div class="wc-pao-addon-container[\s\S]*?<label[^>]*data-addon-name="([^"]*)"[\s\S]*?<\/div>\s*<\/div>/g;
-  const inputRe = /<input[^>]*class="[^"]*wc-pao-addon-field[^"]*"[^>]*>/g;
-  const attr = (tag, name) => { const m = tag.match(new RegExp(`${name}="([^"]*)"`)); return m ? decodeEntities(m[1]) : ''; };
-  let block;
-  while ((block = wrapRe.exec(page))) {
-    const name = decodeEntities(block[1]);
-    const options = [];
-    let input;
-    while ((input = inputRe.exec(block[0]))) {
-      const tag = input[0];
-      options.push({
-        field: attr(tag, 'name'),
-        value: attr(tag, 'value'),
-        label: attr(tag, 'data-label') || 'Yes',
-        price: Number(attr(tag, 'data-raw-price') || 0),
-        priceType: attr(tag, 'data-price-type') || 'flat_fee',
-        type: attr(tag, 'type'),
-      });
-    }
-    if (options.length) addons.push({ name, options, key: classify(name) });
-  }
-  return addons;
+export function getPage(slug) {
+  return catalog.pages[slug] || null;
 }
 
-function classify(name) {
-  const n = name.toLowerCase();
-  if (n.includes('lid')) return 'lid';
-  if (n.includes('induction')) return 'induction';
-  return 'option';
+export function getRawRecipes() {
+  return catalog.recipes;
 }
 
 // ---- Normalisation ---------------------------------------------------------
 
-function normalizeProduct(p) {
+function normalizeProduct(p, currency) {
   const prices = p.prices || {};
   const minor = Number(prices.currency_minor_unit ?? 2);
   const specs = parseSpecs(textOf(p.short_description));
   const categories = (p.categories || []).map((c) => ({ id: c.id, slug: c.slug, name: decodeEntities(c.name) }));
   const family = detectFamily(p, categories);
+  const lidIncluded = /lid included|with lid|w\/ ?lid/i.test(`${p.name} ${textOf(p.short_description)}`) && !/sold separately/i.test(textOf(p.short_description));
   return {
     id: p.id,
     name: cleanName(p.name),
@@ -147,17 +105,18 @@ function normalizeProduct(p) {
     modelCode: specs.model || '',
     diameterCm: specs.diameterCm || null,
     capacityL: specs.capacityL || null,
-    lidIncluded: /lid included|with lid|w\/ ?lid/i.test(`${p.name} ${textOf(p.short_description)}`) && !/sold separately/i.test(textOf(p.short_description)),
+    lidIncluded,
     onSale: !!p.on_sale,
     price: Number(prices.price || 0),
     regularPrice: Number(prices.regular_price || 0),
     salePrice: Number(prices.sale_price || 0),
     priceRange: prices.price_range ? { min: Number(prices.price_range.min_amount), max: Number(prices.price_range.max_amount) } : null,
-    currency: prices.currency_code || 'CAD',
+    // The former store displayed identical figures in CAD and USD; we keep that behaviour.
+    currency,
     minorUnit: minor,
     rating: Number(p.average_rating || 0),
     reviewCount: Number(p.review_count || 0),
-    images: (p.images || []).map((i) => ({ id: i.id, src: i.src, thumb: i.thumbnail || i.src, alt: decodeEntities(i.alt || i.name || p.name) })),
+    images: (p.images || []).map((i) => ({ id: i.id, src: i.src, thumb: i.thumb || i.src, alt: decodeEntities(i.alt || p.name) })),
     categories,
     attributes: (p.attributes || []).map((a) => ({
       id: a.id,
@@ -167,6 +126,7 @@ function normalizeProduct(p) {
       terms: (a.terms || []).map((t) => ({ id: t.id, name: decodeEntities(t.name), slug: t.slug })),
     })),
     variations: (p.variations || []).map((v) => ({ id: v.id, attributes: v.attributes })),
+    addons: (p.addons || []).map((a) => ({ ...a, options: a.options.map((o) => ({ ...o, priceMinor: Math.round(Number(o.price || 0) * 100) })) })),
     hasOptions: !!p.has_options,
     purchasable: !!p.is_purchasable,
     inStock: !!p.is_in_stock,
@@ -175,7 +135,7 @@ function normalizeProduct(p) {
     soldIndividually: !!p.sold_individually,
     weight: p.weight || '',
     dimensions: p.dimensions || {},
-    addToCart: p.add_to_cart || {},
+    addToCart: p.add_to_cart || { minimum: 1, maximum: 99 },
   };
 }
 
@@ -183,7 +143,7 @@ function cleanName(name) {
   return decodeEntities(name).replace(/\s+/g, ' ').trim();
 }
 
-// Woo short descriptions hold the real spec sheet as loose lines ("Diameter: 11″ (28cm)").
+// Short descriptions hold the real spec sheet as loose lines ("Diameter: 11″ (28cm)").
 export function parseSpecs(text) {
   const specs = { lines: [] };
   for (const rawLine of text.split('\n')) {
@@ -260,14 +220,14 @@ export function featuredProducts(products, limit = 8) {
   const picked = [];
   const seen = new Set();
   const pushUnique = (p) => { if (p && !seen.has(p.id) && p.inStock) { seen.add(p.id); picked.push(p); } };
-  // Reviewed products first, then one representative size per collection.
-  byReviews.filter((p) => p.reviewCount > 0).forEach(pushUnique);
+  byReviews.filter((p) => p.reviewCount > 0 && p.family === 'cookware').forEach(pushUnique);
   for (const c of ['titanium-frying-pans', 'titanium-sauce-pans', 'titanium-casserole-pans', 'titanium-roasting-pots', 'titanium-soup-pots', 'titanium-specialty-cookware', 'titanium-gift-sets']) {
     const inCat = cookware.filter((p) => p.categories.some((k) => k.slug === c) || (c === 'titanium-frying-pans' && p.family === 'cookware' && /frying/i.test(p.name)));
     const mid = inCat.sort((a, b) => a.price - b.price)[Math.floor(inCat.length / 2)];
     pushUnique(mid);
     if (picked.length >= limit) break;
   }
+  byReviews.filter((p) => p.reviewCount > 0).forEach(pushUnique);
   return picked.slice(0, limit);
 }
 
@@ -288,16 +248,28 @@ export function matchingLid(products, product) {
   return products.find((p) => p.family === 'lid' && /^lid/i.test(p.name) && new RegExp(`\\b${product.diameterCm}\\s*cm`).test(p.shortDescription)) || null;
 }
 
-export function priceLabel(p) {
-  return { current: p.price, regular: p.regularPrice, onSale: p.onSale && p.regularPrice > p.price, currency: p.currency, minorUnit: p.minorUnit };
-}
-
 export function sizeOptions(products, product) {
-  // Sibling sizes: same family + same category, e.g. all frying pan diameters.
   if (product.family !== 'cookware') return [];
   const cat = product.categories[0] && product.categories[0].slug;
   const base = product.name.replace(/\d+(?:\.\d+)?\s*(?:″|"|&#8243;|in|inch)?\s*\(?\d*\s*cm\)?.*$/i, '').trim().toLowerCase();
   return products
     .filter((p) => p.family === 'cookware' && ((cat && p.categories.some((c) => c.slug === cat)) || (!cat && /frying/i.test(p.name))) && p.name.toLowerCase().startsWith(base) && p.diameterCm)
     .sort((a, b) => a.diameterCm - b.diameterCm);
+}
+
+// Compact representation used by the client-side cart.
+export function cartLineData(p) {
+  return {
+    id: p.id,
+    name: p.name,
+    permalink: p.permalink,
+    image: p.images[0] ? p.images[0].thumb : '',
+    price: p.price,
+    currency: p.currency,
+    minorUnit: p.minorUnit,
+    inStock: p.inStock,
+    soldIndividually: p.soldIndividually,
+    max: p.addToCart.maximum || 99,
+    hasOptions: p.hasOptions || p.addons.length > 0,
+  };
 }

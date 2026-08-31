@@ -1,29 +1,23 @@
-// Recipes from the WordPress "Cooked" plugin, read through the public REST API.
-// The plugin renders ingredients and directions as structured HTML; we parse that into data.
+// Recipes from the catalog snapshot (originally the WordPress "Cooked" plugin).
+// The rendered HTML is parsed once into ingredients and steps.
 
-import { WP } from '../config.js';
-import { cachedJson } from './cache.js';
-import { fetchOrigin } from './proxy.js';
+import { getRawRecipes } from './store.js';
 import { decodeEntities, textOf } from './html.js';
 
-export async function getRecipes(ctx) {
-  return cachedJson(ctx, 'recipes', WP.catalogTtl * 6, async () => {
-    const res = await fetchOrigin('/wp-json/wp/v2/cooked_recipe?per_page=50&_embed=wp:featuredmedia&orderby=date&order=desc');
-    if (!res.ok) return [];
-    const list = await res.json();
-    return list.map(normalizeRecipe);
-  });
+let cache = null;
+
+export async function getRecipes() {
+  if (!cache) cache = getRawRecipes().map(normalizeRecipe).sort((a, b) => (a.date < b.date ? 1 : -1));
+  return cache;
 }
 
-export async function getRecipeBySlug(ctx, slug) {
-  const all = await getRecipes(ctx);
+export async function getRecipeBySlug(_ctx, slug) {
+  const all = await getRecipes();
   return all.find((r) => r.slug === slug) || null;
 }
 
 function normalizeRecipe(r) {
-  const media = r._embedded && r._embedded['wp:featuredmedia'] && r._embedded['wp:featuredmedia'][0];
-  const image = media ? media.source_url : null;
-  const content = r.content ? r.content.rendered : '';
+  const content = r.content || '';
   const ingredients = [];
   const ingRe = /<div[^>]*class="[^"]*cooked-single-ingredient[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
   let m;
@@ -40,20 +34,20 @@ function normalizeRecipe(r) {
     const text = textOf(m[1]).replace(/\s+/g, ' ').trim();
     if (text) steps.push(text);
   }
-  const title = decodeEntities(textOf(r.title.rendered));
+  const title = decodeEntities(textOf(r.title));
   return {
     id: r.id,
     slug: r.slug,
     title,
-    image,
-    imageThumb: image ? image.replace(/(\.[a-z]+)$/i, '-700x525$1') : null,
+    image: r.image,
+    imageThumb: r.thumb || r.image,
     date: r.date,
     ingredients,
     steps,
     category: guessCategory(title, ingredients),
     pan: suggestPan(title, steps.join(' ')),
     time: null, // The source recipes carry no prep or cook times; we do not invent them.
-    description: (r.yoast_head_json && r.yoast_head_json.description) || '',
+    description: r.description || '',
   };
 }
 
@@ -71,7 +65,6 @@ function guessCategory(title, ingredients) {
   return 'Recipes';
 }
 
-// Which piece of the range suits the recipe. Slug of a WooCommerce product category.
 function suggestPan(title, steps) {
   const t = `${title} ${steps}`.toLowerCase();
   if (/soup|simmer for 1 hour|stock/.test(t)) return { slug: 'titanium-soup-pots', label: 'a soup pot' };

@@ -1,61 +1,72 @@
-// Cart: WooCommerce Store API through the same-origin proxy. Sessions are cookie-based,
-// exactly as on the classic storefront, so checkout picks the cart up unchanged.
+// Cart: kept in the browser (localStorage) until a checkout back-end is connected.
+// Lines carry a snapshot of name / price / options so the drawer renders instantly;
+// prices are re-validated against /api/product/ when the cart is opened.
 import { $, $$, toast, openDialog, lockScroll, unlockScroll, money, decode } from './ui.js';
 
-const API = '/wp-json/wc/store/v1';
-let nonce = null;
-let cart = null;
+const KEY = 'te-cart-v1';
+let cart = load();
 let closeDrawer = null;
 const listeners = new Set();
 
-export function onCart(fn) { listeners.add(fn); if (cart) fn(cart); }
-
-async function api(path, { method = 'GET', body } = {}) {
-  const headers = { Accept: 'application/json' };
-  if (body) headers['Content-Type'] = 'application/json';
-  if (nonce) headers.Nonce = nonce;
-  const res = await fetch(`${API}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' });
-  const n = res.headers.get('Nonce'); if (n) nonce = n;
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.message ? decode(data.message.replace(/<[^>]+>/g, '')) : `Request failed (${res.status})`), { data });
-  return data;
+function load() {
+  try { const raw = localStorage.getItem(KEY); const c = raw ? JSON.parse(raw) : null; if (c && Array.isArray(c.lines)) return c; } catch { /* fresh cart */ }
+  return { lines: [], currency: document.documentElement.dataset.currency || 'CAD', updated: 0 };
 }
-
-export async function refresh() { setCart(await api('/cart')); return cart; }
-
-function setCart(next) {
-  cart = next;
-  renderCount();
-  renderDrawer();
+function save() {
+  cart.updated = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(cart)); } catch { /* private mode */ }
+  render();
   listeners.forEach((fn) => fn(cart));
 }
+export function onCart(fn) { listeners.add(fn); fn(cart); }
+export function getCart() { return cart; }
 
-export async function addItem(id, quantity = 1, variation) {
-  if (!nonce) await refresh();
-  const data = await api('/cart/add-item', { method: 'POST', body: { id: Number(id), quantity: Number(quantity), variation } });
-  setCart(data);
-  return data;
-}
+const count = () => cart.lines.reduce((n, l) => n + l.qty, 0);
+const lineTotal = (l) => (l.price + (l.options || []).reduce((s, o) => s + (o.price || 0), 0)) * l.qty;
+const subtotal = () => cart.lines.reduce((s, l) => s + lineTotal(l), 0);
+const keyFor = (line) => [line.id, line.variationId || '', ...(line.options || []).map((o) => o.field + '=' + o.value)].join('|');
 
-// Products with Product Add-Ons (lid / induction) go through the classic add-to-cart handler
-// so WooCommerce prices the options itself. The response is the WordPress page; we only need the cookie.
-export async function addWithForm(productPath, formData) {
-  const before = cart ? cart.items_count : 0;
-  const res = await fetch(productPath, { method: 'POST', body: formData, credentials: 'same-origin', redirect: 'follow', headers: { Accept: 'text/html' } });
-  const html = await res.text();
-  await refresh();
-  if (cart.items_count <= before) {
-    const m = html.match(/class="woocommerce-error"[\s\S]*?<li[^>]*>([\s\S]*?)<\/li>/i);
-    throw new Error(m ? decode(m[1].replace(/<[^>]+>/g, '')).trim() : 'That item could not be added. Please try again.');
-  }
+// line: { id, name, permalink, image, price (minor units), currency, minorUnit, max, soldIndividually,
+//         options: [{ field, value, label, price }], variation: [{ name, value }], variationId }
+export function addLine(line, qty = 1) {
+  const key = keyFor(line);
+  const existing = cart.lines.find((l) => l.key === key);
+  const max = line.max || 99;
+  if (existing) existing.qty = line.soldIndividually ? 1 : Math.min(max, existing.qty + qty);
+  else cart.lines.push({ ...line, key, qty: line.soldIndividually ? 1 : Math.min(max, qty) });
+  save();
   return cart;
 }
-
-export async function updateItem(key, quantity) {
-  setCart(await api('/cart/update-item', { method: 'POST', body: { key, quantity: Number(quantity) } }));
+export function updateQty(key, qty) {
+  const l = cart.lines.find((x) => x.key === key); if (!l) return;
+  l.qty = Math.max(1, Math.min(l.max || 99, Number(qty) || 1)); save();
 }
-export async function removeItem(key) {
-  setCart(await api('/cart/remove-item', { method: 'POST', body: { key } }));
+export function removeLine(key) { cart.lines = cart.lines.filter((l) => l.key !== key); save(); }
+export function clear() { cart.lines = []; save(); }
+
+// Quick add from a product id (cards, suggestions). Product data comes from the edge catalog API.
+export async function addById(id, qty = 1) {
+  const p = await fetch(`/api/product/?id=${encodeURIComponent(id)}`).then((r) => (r.ok ? r.json() : null));
+  if (!p || !p.id) throw new Error('That product could not be found.');
+  if (!p.inStock) throw new Error('That product is currently sold out.');
+  if (p.hasOptions) { location.href = p.permalink; return null; }
+  return addLine({ id: p.id, name: p.name, permalink: p.permalink, image: p.image, price: p.price, currency: p.currency, minorUnit: p.minorUnit, max: p.max, soldIndividually: p.soldIndividually, options: [] }, qty);
+}
+
+// Re-check prices/stock for lines already in the cart (catalog may have changed since they were added).
+async function revalidate() {
+  if (!cart.lines.length) return;
+  let changed = false;
+  await Promise.all(cart.lines.map(async (l) => {
+    try {
+      const p = await fetch(`/api/product/?id=${l.id}`).then((r) => (r.ok ? r.json() : null));
+      if (!p || !p.id) return;
+      if (p.price !== l.price) { l.price = p.price; changed = true; }
+      if (p.image && p.image !== l.image) { l.image = p.image; changed = true; }
+      l.inStock = p.inStock;
+    } catch { /* offline: keep snapshot */ }
+  }));
+  if (changed) save(); else render();
 }
 
 export function open() {
@@ -63,14 +74,15 @@ export function open() {
   if (!root || closeDrawer) return;
   lockScroll('cart');
   closeDrawer = openDialog(root, $('.drawer__panel', root), { onClose: () => { unlockScroll('cart'); closeDrawer = null; } });
-  refresh().catch(() => {});
+  render();
+  revalidate();
 }
 export function close() { if (closeDrawer) closeDrawer(); }
 
 // ---- Rendering -----------------------------------------------------------------
 
 function renderCount() {
-  const n = cart ? cart.items_count : 0;
+  const n = count();
   $$('[data-cart-count]').forEach((el) => {
     const prev = Number(el.textContent || 0);
     el.textContent = n; el.hidden = n === 0;
@@ -79,51 +91,53 @@ function renderCount() {
   $$('[data-cart-count-label]').forEach((el) => { el.textContent = n ? `(${n})` : ''; });
 }
 
-function line(item) {
-  const cur = item.prices.currency_code, mu = item.prices.currency_minor_unit;
-  const img = item.images && item.images[0];
-  const meta = (item.item_data || []).map((d) => `${decode(d.name).replace(/\s*\(optional\)/i, '').replace(/^Do you want (to add|this in) /i, '').replace(/\?$/, '')}: ${decode(d.value).replace(/<[^>]+>/g, '')}`)
-    .concat((item.variation || []).map((v) => `${v.attribute}: ${v.value}`));
-  return `<li class="cart-line" data-key="${item.key}">
-    <a class="cart-line__media" href="${item.permalink ? new URL(item.permalink, location.origin).pathname : '#'}">${img ? `<img src="${img.thumbnail || img.src}" alt="" width="88" height="88" loading="lazy">` : ''}</a>
+function lineHtml(l) {
+  const cur = l.currency || cart.currency, mu = l.minorUnit ?? 2;
+  const meta = (l.options || []).map((o) => o.label).concat((l.variation || []).map((v) => `${v.name}: ${v.value}`));
+  return `<li class="cart-line" data-key="${escapeAttr(l.key)}">
+    <a class="cart-line__media" href="${escapeAttr(l.permalink || '#')}">${l.image ? `<img src="${escapeAttr(l.image)}" alt="" width="88" height="88" loading="lazy">` : ''}</a>
     <div>
-      <p class="cart-line__name">${decode(item.name)}</p>
-      ${meta.length ? `<p class="cart-line__meta">${meta.join(' · ')}</p>` : ''}
+      <p class="cart-line__name">${escapeHtml(l.name)}</p>
+      ${meta.length ? `<p class="cart-line__meta">${escapeHtml(meta.join(' · '))}</p>` : ''}
+      ${l.inStock === false ? `<p class="cart-line__meta" style="color:var(--danger)">Currently sold out</p>` : ''}
       <div class="cart-line__row">
         <div class="qty" aria-label="Quantity">
           <button type="button" data-qty="-1" aria-label="Decrease quantity"><svg class="icon" viewBox="0 0 24 24"><path d="M6 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
-          <input type="number" min="1" max="${item.quantity_limits ? item.quantity_limits.maximum : 99}" value="${item.quantity}" aria-label="Quantity" ${item.sold_individually ? 'readonly' : ''}>
+          <input type="number" min="1" max="${l.max || 99}" value="${l.qty}" aria-label="Quantity" ${l.soldIndividually ? 'readonly' : ''}>
           <button type="button" data-qty="1" aria-label="Increase quantity"><svg class="icon" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
         </div>
-        <span class="cart-line__price">${money(item.totals.line_total, cur, mu)}</span>
+        <span class="cart-line__price">${money(lineTotal(l), cur, mu)}</span>
       </div>
       <button type="button" class="cart-line__remove" data-remove>Remove</button>
     </div>
   </li>`;
 }
 
-function renderDrawer() {
+function render() {
+  renderCount();
+  const has = cart.lines.length > 0;
+  const cur = cart.lines[0] ? cart.lines[0].currency : cart.currency;
+  const mu = cart.lines[0] ? cart.lines[0].minorUnit ?? 2 : 2;
   const root = $('[data-cart-drawer]');
-  if (!root || !cart) return;
-  const lines = $('[data-cart-lines]', root), empty = $('[data-cart-empty]', root), foot = $('[data-cart-foot]', root), sub = $('[data-cart-subtotal]', root);
-  const has = cart.items && cart.items.length;
-  empty.hidden = !!has; lines.hidden = !has; foot.hidden = !has;
-  if (has) {
-    lines.innerHTML = cart.items.map(line).join('');
-    sub.textContent = money(cart.totals.total_items, cart.totals.currency_code, cart.totals.currency_minor_unit);
+  if (root) {
+    const lines = $('[data-cart-lines]', root), empty = $('[data-cart-empty]', root), foot = $('[data-cart-foot]', root), sub = $('[data-cart-subtotal]', root);
+    empty.hidden = has; lines.hidden = !has; foot.hidden = !has;
+    if (has) { lines.innerHTML = cart.lines.map(lineHtml).join(''); sub.textContent = money(subtotal(), cur, mu); }
+    renderSuggestion(root);
   }
-  renderSuggestion(root);
-  // Also render the full cart page if present.
   const pageLines = $('[data-cart-page-lines]');
   if (pageLines) {
-    pageLines.innerHTML = has ? cart.items.map(line).join('') : '';
-    $('[data-cart-page-empty]').hidden = !!has;
+    pageLines.innerHTML = has ? cart.lines.map(lineHtml).join('') : '';
+    $('[data-cart-page-empty]').hidden = has;
     $('[data-cart-page-summary]').hidden = !has;
-    if (has) {
-      $('[data-cart-page-subtotal]').textContent = money(cart.totals.total_items, cart.totals.currency_code, cart.totals.currency_minor_unit);
-      const disc = Number(cart.totals.total_discount || 0);
-      const d = $('[data-cart-page-discount]'); if (d) { d.hidden = !disc; if (disc) $('strong', d).textContent = '−' + money(disc, cart.totals.currency_code, cart.totals.currency_minor_unit); }
-    }
+    if (has) $('[data-cart-page-subtotal]').textContent = money(subtotal(), cur, mu);
+  }
+  const checkout = $('[data-checkout-summary]');
+  if (checkout) {
+    checkout.innerHTML = has
+      ? `<ul class="cart-lines">${cart.lines.map((l) => `<li class="cart-line" data-key="${escapeAttr(l.key)}"><a class="cart-line__media" href="${escapeAttr(l.permalink)}">${l.image ? `<img src="${escapeAttr(l.image)}" alt="" width="88" height="88">` : ''}</a><div><p class="cart-line__name">${escapeHtml(l.name)}</p><p class="cart-line__meta">Qty ${l.qty}${(l.options || []).length ? ' · ' + escapeHtml(l.options.map((o) => o.label).join(' · ')) : ''}</p><p class="cart-line__price" style="margin-top:.5rem">${money(lineTotal(l), cur, mu)}</p></div></li>`).join('')}</ul>
+         <div class="cart-totals__row" style="margin-top:1.25rem"><span>Subtotal</span><strong>${money(subtotal(), cur, mu)}</strong></div>`
+      : '<p class="muted">Your cart is empty.</p>';
   }
 }
 
@@ -131,18 +145,18 @@ let suggestCache = new Map();
 async function renderSuggestion(root) {
   const box = $('[data-cart-suggest]', root);
   if (!box) return;
-  if (!cart.items || !cart.items.length) { box.hidden = true; return; }
-  const ids = cart.items.map((i) => i.id).join(',');
+  if (!cart.lines.length) { box.hidden = true; return; }
+  const ids = cart.lines.map((l) => l.id).join(',');
   try {
     if (!suggestCache.has(ids)) suggestCache.set(ids, await fetch(`/api/suggest/?ids=${ids}`).then((r) => r.json()));
     const s = suggestCache.get(ids);
     if (!s || !s.product) { box.hidden = true; return; }
     box.hidden = false;
-    box.innerHTML = `<p class="cart-suggest__title">${s.title}</p>
+    box.innerHTML = `<p class="cart-suggest__title">${escapeHtml(s.title)}</p>
       <div class="cart-suggest__item">
-        <img src="${s.product.image}" alt="" width="64" height="64" loading="lazy">
-        <div><p class="cart-suggest__name">${s.product.name}</p><p class="cart-suggest__price">${s.product.price}</p></div>
-        <button class="btn btn--secondary btn--sm" type="button" data-add-to-cart="${s.product.id}" data-product-name="${s.product.name}"><span class="btn__label">Add</span></button>
+        <img src="${escapeAttr(s.product.image)}" alt="" width="64" height="64" loading="lazy">
+        <div><p class="cart-suggest__name">${escapeHtml(s.product.name)}</p><p class="cart-suggest__price">${escapeHtml(s.product.price)}</p></div>
+        <button class="btn btn--secondary btn--sm" type="button" data-add-to-cart="${s.product.id}" data-product-name="${escapeAttr(s.product.name)}"><span class="btn__label">Add</span></button>
       </div>`;
   } catch { box.hidden = true; }
 }
@@ -151,41 +165,36 @@ async function renderSuggestion(root) {
 
 export function initCart() {
   $$('[data-cart-open]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); open(); }));
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('[data-cart-close]')) { e.preventDefault(); close(); }
-  });
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-cart-close]')) { e.preventDefault(); close(); } });
 
-  // Quick add buttons (simple products without options) anywhere on the page.
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-add-to-cart]');
     if (!btn) return;
     e.preventDefault();
     btn.classList.add('is-busy');
     try {
-      await addItem(btn.dataset.addToCart, 1);
-      toast(`${btn.dataset.productName || 'Item'} added to your cart`);
-      open();
+      const res = await addById(btn.dataset.addToCart, 1);
+      if (res) { toast(`${btn.dataset.productName || 'Item'} added to your cart`); open(); }
     } catch (err) { toast(err.message, { error: true }); }
     finally { btn.classList.remove('is-busy'); }
   });
 
-  // Quantity / remove inside any rendered cart list.
-  document.addEventListener('click', async (e) => {
+  document.addEventListener('click', (e) => {
     const lineEl = e.target.closest('.cart-line'); if (!lineEl) return;
     const key = lineEl.dataset.key;
-    const input = $('input', lineEl);
-    if (e.target.closest('[data-remove]')) { lineEl.classList.add('is-updating'); try { await removeItem(key); } catch (err) { toast(err.message, { error: true }); lineEl.classList.remove('is-updating'); } return; }
+    if (e.target.closest('[data-remove]')) { removeLine(key); return; }
     const q = e.target.closest('[data-qty]');
-    if (q) { const next = Math.max(1, Number(input.value) + Number(q.dataset.qty)); input.value = next; lineEl.classList.add('is-updating'); try { await updateItem(key, next); } catch (err) { toast(err.message, { error: true }); lineEl.classList.remove('is-updating'); } }
+    if (q) { const input = $('input', lineEl); updateQty(key, Number(input.value) + Number(q.dataset.qty)); }
   });
-  document.addEventListener('change', async (e) => {
+  document.addEventListener('change', (e) => {
     const lineEl = e.target.closest('.cart-line'); if (!lineEl || e.target.type !== 'number') return;
-    const next = Math.max(1, Number(e.target.value) || 1);
-    lineEl.classList.add('is-updating');
-    try { await updateItem(lineEl.dataset.key, next); } catch (err) { toast(err.message, { error: true }); lineEl.classList.remove('is-updating'); }
+    updateQty(lineEl.dataset.key, e.target.value);
   });
+  window.addEventListener('storage', (e) => { if (e.key === KEY) { cart = load(); render(); } });
 
-  // Initial count (cheap; cached by the browser for the session).
-  refresh().catch(() => {});
+  render();
   if (location.search.includes('cart=open')) open();
 }
+
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function escapeAttr(s) { return escapeHtml(s); }

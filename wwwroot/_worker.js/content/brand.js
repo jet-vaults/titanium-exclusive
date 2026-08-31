@@ -40,27 +40,27 @@ export const VIDEOS = [
   { id: 'ZK9IM_mMYtA', title: 'Bear Sloppy Joes', kind: 'Bearing it All in the Kitchen · Ep. 3' },
 ];
 
-// Brand imagery that already exists on the WordPress media library (served through the proxy).
+// Brand imagery, stored in wwwroot/media/.
 export const IMG = {
-  panTexture: '/wp-content/uploads/2021/08/Frying-Pan-Picture-3.jpg',
-  panBase: '/wp-content/uploads/2022/08/Titanium-Picture-Product-1.jpg',
-  pour: '/wp-content/uploads/2021/09/titanium-exclusive-picture-1.jpg',
-  sparks: '/wp-content/uploads/2021/09/titanium-exclusive-picture-2.jpg',
-  sparksWide: '/wp-content/uploads/2021/11/Main-Banner.jpg',
-  lathe: '/wp-content/uploads/2021/09/titanium-exclusive-picture-3.jpg',
-  ingots: '/wp-content/uploads/2021/08/Company-Banner.jpg',
-  torch: '/wp-content/uploads/2022/07/How-titanium-cookware-is-made-picture.jpg',
-  fryingPanFood: '/wp-content/uploads/2021/08/Frying-Pan-Picture-1.jpg',
-  roastingPot: '/wp-content/uploads/2021/08/Titanium-Roasting-Pots-Picture-1.jpg',
-  tradeShow: '/wp-content/uploads/2021/11/Trade-Show-Picture.jpg',
-  booth2000: '/wp-content/uploads/2022/07/Award-Picture-13.jpg',
-  pressLondon2000: '/wp-content/uploads/2022/07/Award-Picture-8.jpg',
-  cgta: '/wp-content/uploads/2022/07/Award-Picture-2.jpg',
-  cipo: '/wp-content/uploads/2022/07/Award-Picture-14.jpg',
-  uspto: '/wp-content/uploads/2022/07/Award-Picture-16.jpg',
-  agribition: '/wp-content/uploads/2022/07/Award-Picture-6.jpg',
-  winnipeg: '/wp-content/uploads/2022/07/Award-Picture-4.jpg',
-  royal: '/wp-content/uploads/2022/07/Award-Picture-10.jpg',
+  panTexture: '/media/2021/08/Frying-Pan-Picture-3.jpg',
+  panBase: '/media/2022/08/Titanium-Picture-Product-1.jpg',
+  pour: '/media/2021/09/titanium-exclusive-picture-1.jpg',
+  sparks: '/media/2021/09/titanium-exclusive-picture-2.jpg',
+  sparksWide: '/media/2021/11/Main-Banner.jpg',
+  lathe: '/media/2021/09/titanium-exclusive-picture-3.jpg',
+  ingots: '/media/2021/08/Company-Banner.jpg',
+  torch: '/media/2022/07/How-titanium-cookware-is-made-picture.jpg',
+  fryingPanFood: '/media/2021/08/Frying-Pan-Picture-1.jpg',
+  roastingPot: '/media/2021/08/Titanium-Roasting-Pots-Picture-1.jpg',
+  tradeShow: '/media/2021/11/Trade-Show-Picture.jpg',
+  booth2000: '/media/2022/07/Award-Picture-13.jpg',
+  pressLondon2000: '/media/2022/07/Award-Picture-8.jpg',
+  cgta: '/media/2022/07/Award-Picture-2.jpg',
+  cipo: '/media/2022/07/Award-Picture-14.jpg',
+  uspto: '/media/2022/07/Award-Picture-16.jpg',
+  agribition: '/media/2022/07/Award-Picture-6.jpg',
+  winnipeg: '/media/2022/07/Award-Picture-4.jpg',
+  royal: '/media/2022/07/Award-Picture-10.jpg',
 };
 
 export const NAV = [
@@ -97,6 +97,5 @@ export const FOOTER_LINKS = {
     { label: 'Cooking instructions', href: '/support/instructions/' },
     { label: 'Shipping', href: '/support/shipping/' },
     { label: 'Contact', href: '/contact/' },
-    { label: 'My account', href: '/my-account/' },
   ],
 };

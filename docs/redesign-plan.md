@@ -99,7 +99,11 @@ wwwroot/assets/
   fonts/ img/
 ```
 
-## 10. Technical implementation
+## 10. Technical implementation (revised 2026-08-30 — standalone)
+
+> Revision: the client asked for **no contact with the previous website**. The WooCommerce proxy and Store API integration were removed; the catalog, add-ons, reviews, recipes and media were snapshotted into this repo, the cart is browser-side, and `/checkout/` is a placeholder until a new commerce back-end is connected. The original plan below is kept for the record.
+
+## 10a. Original technical plan
 
 - **Hosting:** Cloudflare Pages (JetVaults) serves `wwwroot/`. A Pages edge worker (`_worker.js/`) renders storefront pages server-side from the live WooCommerce Store API (5-minute edge cache), so products are never hard-coded and stay managed in WooCommerce.
 - **Commerce continuity:** the same worker reverse-proxies `/wp-json/*`, `/wp-content/*`, `/wp-admin/*`, `/checkout/`, `/my-account/`, `?wc-ajax`, `?add-to-cart` to the WordPress origin. Cookies, nonces, sessions, payments, Mailchimp and admin keep working; the browser only ever sees one host.

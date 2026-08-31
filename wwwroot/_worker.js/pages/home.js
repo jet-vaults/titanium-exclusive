@@ -215,7 +215,7 @@ export function videoCard(v, { hero = false } = {}) {
   return html`
     <div class="reveal">
       <div class="video ${hero ? 'video--hero' : ''}" data-video="${v.id}" data-title="${v.title}" role="button" tabindex="0" aria-label="Play video: ${v.title}">
-        <img src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" alt="" loading="lazy" decoding="async" width="480" height="360">
+        <img src="/media/video/${v.id}.jpg" alt="" loading="lazy" decoding="async" width="480" height="360">
         <span class="video__play"><span class="video__play-btn">${raw(ICON.play)}</span></span>
       </div>
       <div class="video__caption"><span class="video__kind">${v.kind}</span><span class="video__title">${v.title}</span></div>
