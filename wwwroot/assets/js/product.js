@@ -1,6 +1,6 @@
 // Product page: gallery, options (add-ons / variations), quantity, add to cart, sticky bar.
-import { $, $$, toast, money, reducedMotion } from './ui.js?v=3';
-import { addLine, open as openCart } from './cart.js?v=3';
+import { $, $$, toast, money, reducedMotion } from './ui.js?v=4';
+import { addLine, open as openCart } from './cart.js?v=4';
 
 const form = $('[data-buy-form]');
 if (form) init(form);

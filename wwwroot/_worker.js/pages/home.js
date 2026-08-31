@@ -280,7 +280,7 @@ export function organizationLd() {
     name: SITE.name,
     legalName: BRAND.legalName,
     url: SITE.canonicalOrigin,
-    logo: `${SITE.canonicalOrigin}/assets/img/mark.png`,
+    logo: `${SITE.canonicalOrigin}/assets/img/logo-1000.png`,
     foundingDate: String(BRAND.since),
     telephone: BRAND.phoneTollFreeTel,
     email: BRAND.email,

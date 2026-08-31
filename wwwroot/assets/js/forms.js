@@ -1,5 +1,5 @@
 // Contact form: inline validation, honeypot, async submit with clear success / error states.
-import { $, $$ } from './ui.js?v=3';
+import { $, $$ } from './ui.js?v=4';
 
 $$('[data-contact-form]').forEach(init);
 

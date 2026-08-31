@@ -7,7 +7,7 @@ import { BRAND, NAV, FOOTER_LINKS } from '../content/brand.js';
 import { getCategories, getAllProducts, featuredProducts } from '../lib/store.js';
 import { ICON, button } from './components.js';
 
-export const ASSET_VERSION = '3';
+export const ASSET_VERSION = '4';
 
 export async function shellData(c) {
   const [categories, products] = await Promise.all([getCategories(c.ctx), getAllProducts(c.ctx, c.currency)]);
@@ -51,7 +51,8 @@ ${noindex ? raw('<meta name="robots" content="noindex,follow">') : ''}
 <meta property="og:image" content="${ogImg}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#f5f2ec">
-<link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/img/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/assets/img/favicon-64.png" sizes="64x64" type="image/png">
 <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
 <link rel="stylesheet" href="/assets/css/site.css?v=${ASSET_VERSION}">
 <link rel="preload" href="/assets/fonts/newsreader.woff2" as="font" type="font/woff2" crossorigin>
@@ -64,6 +65,7 @@ ${ld.map((o) => jsonLd(o))}
 <body class="${bodyClass}" data-header-theme="${headerTheme}">
 <a class="skip-link" href="#main">Skip to content</a>
 ${header(c, shell)}
+${mobileNav(shell ? shell.categories : [])}
 <main id="main" tabindex="-1">${body}</main>
 ${footer(c)}
 ${cartDrawer()}
@@ -112,13 +114,14 @@ function header(c, shell) {
       <button class="icon-btn cart-btn" type="button" data-cart-open aria-label="Open cart" aria-controls="cart-drawer">${raw(ICON.bag)}<span class="cart-btn__count" data-cart-count hidden>0</span></button>
     </div>
   </div>
-  ${mobileNav(cats)}
 </header>`;
 }
 
-function logo() {
-  return html`<span class="wordmark"><span class="wordmark__main">Titanium</span><span class="wordmark__sub">Exclusive</span></span>`;
+function logo(variant = '', cls = 'logo') {
+  const name = variant === 'light' ? 'logo-light' : 'logo';
+  return html`<img class="${cls}" src="/assets/img/${name}-320.webp" srcset="/assets/img/${name}-320.webp 320w, /assets/img/${name}-640.webp 640w, /assets/img/${name}-1000.webp 1000w" sizes="(max-width: 64em) 150px, 200px" width="1000" height="${LOGO_H}" alt="Titanium Exclusive Cookware" decoding="async">`;
 }
+const LOGO_H = 410;
 
 function megaMenu(cats, featured) {
   const primary = PRIMARY_COLLECTIONS.map((k) => cats.find((c) => c.slug === k.slug) || { slug: k.slug, name: k.name, count: 0, image: null });
@@ -167,7 +170,7 @@ function mobileNav(cats) {
   <div class="mobile-nav" id="mobile-nav" data-mobile-nav aria-hidden="true">
     <div class="mobile-nav__panel" role="dialog" aria-modal="true" aria-label="Menu">
       <div class="mobile-nav__top">
-        <span class="wordmark wordmark--sm"><span class="wordmark__main">Titanium</span><span class="wordmark__sub">Exclusive</span></span>
+        ${logo('', 'logo logo--sm')}
         <button class="icon-btn" type="button" data-menu-close aria-label="Close menu">${raw(ICON.close)}</button>
       </div>
       <button class="mobile-nav__search" type="button" data-search-open>${raw(ICON.search)}<span>Search cookware, recipes, help</span></button>
@@ -259,7 +262,7 @@ function footer(c) {
 <footer class="site-footer">
   <div class="container site-footer__grid">
     <div class="site-footer__brand">
-      <span class="wordmark wordmark--lg"><span class="wordmark__main">Titanium</span><span class="wordmark__sub">Exclusive</span></span>
+      ${logo('light', 'logo logo--lg')}
       <p class="site-footer__tag">${SITE.tagline}. ${BRAND.origin}, sold across ${BRAND.region}, and backed by a ${BRAND.warrantyYears}-year warranty.</p>
       <div class="currency" data-currency-switch>
         <span class="currency__label">Currency</span>
@@ -273,7 +276,7 @@ function footer(c) {
       </nav>`)}
   </div>
   <div class="container site-footer__legal">
-    <p>© ${year} ${BRAND.legalName}. All rights reserved.</p>
+    <p>© ${year} ${BRAND.legalName} All rights reserved.</p>
     <ul>
       <li><a href="/support/shipping/">Shipping & returns</a></li>
       <li><a href="/support/warranty/">Warranty</a></li>

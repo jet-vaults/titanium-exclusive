@@ -253,6 +253,11 @@ em.accent, .accent-i { font-style: italic; font-weight: 300; color: var(--bronze
 .site-header__brand { justify-self: start; display: inline-flex; align-items: center; }
 .site-header__menu { display: none; }
 .site-header__actions { justify-self: end; display: flex; align-items: center; gap: .25rem; }
+.logo { display: block; width: auto; height: 2.75rem; transition: height var(--dur) var(--ease), opacity var(--dur) var(--ease); }
+.site-header.is-scrolled .logo { height: 2.25rem; }
+.logo--sm { height: 2rem; }
+.logo--lg { height: 3.75rem; }
+.site-header__brand:hover .logo { opacity: .85; }
 .wordmark { display: inline-flex; align-items: baseline; gap: .45rem; font-family: var(--font-display); font-variation-settings: 'opsz' 24; text-transform: uppercase; letter-spacing: .08em; line-height: 1; white-space: nowrap; }
 .wordmark__main { font-weight: 600; font-size: 1.2rem; }
 .wordmark__sub { font-weight: 300; font-size: .85rem; letter-spacing: .22em; color: var(--fg-muted); }
@@ -304,7 +309,8 @@ em.accent, .accent-i { font-style: italic; font-weight: 300; color: var(--bronze
 /* Mobile nav */
 .mobile-nav { position: fixed; inset: 0; z-index: 140; visibility: hidden; transition: visibility 0s linear var(--dur); }
 .mobile-nav.is-open { visibility: visible; transition-delay: 0s; }
-.mobile-nav__backdrop, .drawer__backdrop, .search__backdrop { position: absolute; inset: 0; background: rgba(22, 23, 25, .5); opacity: 0; transition: opacity var(--dur) var(--ease); border: 0; }
+.mobile-nav__backdrop, .drawer__backdrop, .search__backdrop { position: absolute; inset: 0; z-index: 1; background: rgba(22, 23, 25, .5); opacity: 0; transition: opacity var(--dur) var(--ease); border: 0; }
+.mobile-nav__panel, .drawer__panel, .search__panel { z-index: 2; }
 .mobile-nav.is-open .mobile-nav__backdrop, .drawer.is-open .drawer__backdrop, .search.is-open .search__backdrop { opacity: 1; }
 .mobile-nav__panel { position: absolute; top: 0; bottom: 0; left: 0; width: min(26rem, 90vw); background: var(--ivory); color: var(--ink); display: flex; flex-direction: column; transform: translateX(-100%); transition: transform var(--dur) var(--ease-out); overflow-y: auto; }
 .mobile-nav.is-open .mobile-nav__panel { transform: none; }
@@ -323,8 +329,8 @@ em.accent, .accent-i { font-style: italic; font-weight: 300; color: var(--bronze
   .site-nav { display: none; }
   .site-header__menu { display: inline-flex; }
   .site-header__bar { grid-template-columns: auto 1fr auto; gap: .25rem; }
-  .site-header .wordmark__main { font-size: 1.05rem; }
-  .site-header .wordmark__sub { font-size: .7rem; letter-spacing: .16em; }
+  .site-header .logo { height: 2.25rem; }
+  .site-header.is-scrolled .logo { height: 2rem; }
   .site-header__actions .icon-btn { min-width: 2.5rem; }
   .site-header__brand { justify-self: center; }
   .site-header__account { display: none; }

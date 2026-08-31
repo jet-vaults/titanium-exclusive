@@ -1,5 +1,5 @@
 // Header behaviour: compact on scroll, hide on scroll-down, mega menu, mobile drawer.
-import { $, $$, openDialog, lockScroll, unlockScroll } from './ui.js?v=3';
+import { $, $$, openDialog, lockScroll, unlockScroll } from './ui.js?v=4';
 
 export function initNav() {
   const header = $('[data-header]');

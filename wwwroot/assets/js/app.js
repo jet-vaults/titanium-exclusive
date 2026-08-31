@@ -1,9 +1,9 @@
 // Entry point: wires the shared shell behaviours. Page-specific modules load themselves.
-import { initNav } from './nav.js?v=3';
-import { initMotion } from './motion.js?v=3';
-import { initCart } from './cart.js?v=3';
-import { initSearch } from './search.js?v=3';
-import { initCurrency } from './currency.js?v=3';
+import { initNav } from './nav.js?v=4';
+import { initMotion } from './motion.js?v=4';
+import { initCart } from './cart.js?v=4';
+import { initSearch } from './search.js?v=4';
+import { initCurrency } from './currency.js?v=4';
 
 document.documentElement.classList.remove('no-js');
 initNav();
