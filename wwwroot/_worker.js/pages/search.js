@@ -71,7 +71,7 @@ export async function productApi(c) {
 }
 
 function json(data) {
-  return new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'private, max-age=60' } });
+  return new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'private, max-age=60', 'vary': 'Cookie' } });
 }
 
 export async function renderSearchPage(c) {

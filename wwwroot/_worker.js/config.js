@@ -67,6 +67,15 @@ export const CONTACT = {
   accessKey: '',
 };
 
+// Currency conversion. Catalog prices are CAD (the source of truth). USD is converted
+// with the live ECB daily rate (api.frankfurter.dev, cached at the edge for 12 h) and
+// rounded to .99. If the rate service is unreachable, fallbackUsdRate is used.
+export const CURRENCY = {
+  base: 'CAD',
+  fallbackUsdRate: 0.73,
+  rateTtlMs: 12 * 60 * 60 * 1000,
+};
+
 // Checkout is not connected yet. When a commerce back-end is ready, point this at it and the
 // cart's Checkout button will hand the order over. Until then /checkout/ shows a clear notice.
 export const CHECKOUT = {

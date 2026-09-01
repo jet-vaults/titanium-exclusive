@@ -1,7 +1,7 @@
 // Cart: kept in the browser (localStorage) until a checkout back-end is connected.
 // Lines carry a snapshot of name / price / options so the drawer renders instantly;
 // prices are re-validated against /api/product/ when the cart is opened.
-import { $, $$, toast, openDialog, lockScroll, unlockScroll, money, decode } from './ui.js?v=5';
+import { $, $$, toast, openDialog, lockScroll, unlockScroll, money, decode } from './ui.js?v=6';
 
 const KEY = 'te-cart-v1';
 let cart = load();
@@ -46,7 +46,7 @@ export function clear() { cart.lines = []; save(); }
 
 // Quick add from a product id (cards, suggestions). Product data comes from the edge catalog API.
 export async function addById(id, qty = 1) {
-  const p = await fetch(`/api/product/?id=${encodeURIComponent(id)}`).then((r) => (r.ok ? r.json() : null));
+  const p = await fetch(`/api/product/?id=${encodeURIComponent(id)}&cur=${pageCurrency()}`).then((r) => (r.ok ? r.json() : null));
   if (!p || !p.id) throw new Error('That product could not be found.');
   if (!p.inStock) throw new Error('That product is currently sold out.');
   if (p.hasOptions) { location.href = p.permalink; return null; }
@@ -59,11 +59,16 @@ async function revalidate() {
   let changed = false;
   await Promise.all(cart.lines.map(async (l) => {
     try {
-      const p = await fetch(`/api/product/?id=${l.id}`).then((r) => (r.ok ? r.json() : null));
+      const p = await fetch(`/api/product/?id=${l.id}&cur=${pageCurrency()}`).then((r) => (r.ok ? r.json() : null));
       if (!p || !p.id) return;
       const v = l.variationId && p.variations ? p.variations.find((x) => x.id === l.variationId) : null;
       const price = v ? v.price : p.price;
       if (!l.variationId || v) { if (price !== l.price) { l.price = price; changed = true; } }
+      if (l.currency !== p.currency) { l.currency = p.currency; changed = true; }
+      for (const o of l.options || []) {
+        const np = p.addonPrices ? p.addonPrices[o.field] : undefined;
+        if (np != null && np !== o.price) { o.price = np; changed = true; }
+      }
       if (p.image && p.image !== l.image) { l.image = p.image; changed = true; }
       l.inStock = v ? v.inStock : p.inStock;
     } catch { /* offline: keep snapshot */ }
@@ -197,6 +202,8 @@ export function initCart() {
   window.addEventListener('storage', (e) => { if (e.key === KEY) { cart = load(); render(); } });
 
   render();
+  // Prices in stored lines follow the selected currency; re-price on every page load.
+  revalidate();
   if (location.search.includes('cart=open')) open();
 }
 

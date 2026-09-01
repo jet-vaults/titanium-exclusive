@@ -53,7 +53,7 @@ export const FAQ = [
   {
     id: 'shipping',
     q: 'Where do you ship, and in which currency do I pay?',
-    a: `<p>We ship across Canada and the United States at a flat rate, shown to you before you pay. Prices are displayed in Canadian or US dollars — switch currencies at the bottom of any page.</p>`,
+    a: `<p>We ship across Canada and the United States at a flat rate, shown to you before you pay. Prices are displayed in Canadian or US dollars — switch currencies at the bottom of any page (on your phone, in the menu). US prices follow the daily exchange rate.</p>`,
     topics: ['shipping'],
   },
   {

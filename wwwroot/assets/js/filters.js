@@ -1,6 +1,6 @@
 // Shop filtering and sorting. The grid is server-rendered with data attributes; this module
 // filters it client-side (71 products) and mirrors the state in the URL.
-import { $, $$, lockScroll, unlockScroll } from './ui.js?v=5';
+import { $, $$, lockScroll, unlockScroll } from './ui.js?v=6';
 
 const shop = $('[data-shop]');
 if (shop) init(shop);
@@ -9,7 +9,10 @@ function init(root) {
   const grid = $('[data-shop-grid]', root);
   const cards = $$('.product-card', grid);
   const form = $('[data-filters]', root);
-  const countEl = $('[data-shop-count]', root);
+  const countEls = $$('[data-shop-count]', root);
+  const priceRange = $('[data-price-range]', root);
+  const priceLabel = $('[data-price-label]', root);
+  const priceMax = priceRange ? Number(priceRange.max) : 0;
   const emptyEl = $('[data-shop-empty]', root);
   const chips = $('[data-active-filters]', root);
   const sortSel = $('[data-sort]', root);
@@ -38,8 +41,8 @@ function init(root) {
       type: fd.getAll('type'),
       sale: fd.get('sale') === '1',
       stock: fd.get('stock') === '1',
-      min: Number(fd.get('min') || 0),
-      max: Number(fd.get('max') || 0),
+      min: 0,
+      max: priceRange && Number(priceRange.value) < priceMax ? Number(priceRange.value) : 0,
       sort: sortSel ? sortSel.value : 'featured',
     };
   };
@@ -74,7 +77,8 @@ function init(root) {
       }
     });
     sorted.forEach((d) => grid.appendChild(d.el));
-    countEl.textContent = `${visible} ${visible === 1 ? 'product' : 'products'}`;
+    countEls.forEach((el) => { el.textContent = `${visible} ${visible === 1 ? 'product' : 'products'}`; });
+    if (priceRange && priceLabel) { const v = Number(priceRange.value); priceLabel.textContent = `$${v}`; priceRange.style.setProperty('--fill', `${((v - Number(priceRange.min)) / (priceMax - Number(priceRange.min))) * 100}%`); }
     emptyEl.classList.toggle('is-visible', visible === 0);
     renderChips(s);
     if (push) syncUrl(s);
@@ -92,7 +96,7 @@ function init(root) {
     s.type.forEach((v) => items.push(['type', v, labelFor('type', v)]));
     if (s.sale) items.push(['sale', '1', 'On sale']);
     if (s.stock) items.push(['stock', '1', 'In stock']);
-    if (s.min || s.max) items.push(['price', '', `${s.min ? '$' + s.min : '$0'} – ${s.max ? '$' + s.max : 'any'}`]);
+    if (s.max) items.push(['price', '', `Up to $${s.max}`]);
     chips.innerHTML = items.map(([n, v, l]) => `<button type="button" data-clear="${n}" data-value="${v}">${l}<svg class="icon" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>`).join('')
       + (items.length ? '<button type="button" data-clear="all">Clear all</button>' : '');
   };
@@ -100,7 +104,7 @@ function init(root) {
   const syncUrl = (s) => {
     const p = new URLSearchParams();
     s.cats.forEach((v) => p.append('cat', v)); s.sizes.forEach((v) => p.append('size', v)); s.lid.forEach((v) => p.append('lid', v)); s.type.forEach((v) => p.append('type', v));
-    if (s.sale) p.set('sale', '1'); if (s.stock) p.set('stock', '1'); if (s.min) p.set('min', s.min); if (s.max) p.set('max', s.max); if (s.sort !== 'featured') p.set('sort', s.sort);
+    if (s.sale) p.set('sale', '1'); if (s.stock) p.set('stock', '1'); if (s.max) p.set('max', s.max); if (s.sort !== 'featured') p.set('sort', s.sort);
     const qs = p.toString();
     history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
   };
@@ -109,7 +113,7 @@ function init(root) {
   const params = new URLSearchParams(location.search);
   ['cat', 'size', 'lid', 'type'].forEach((n) => params.getAll(n).forEach((v) => { const i = form.querySelector(`[name="${n}"][value="${CSS.escape(v)}"]`); if (i) i.checked = true; }));
   ['sale', 'stock'].forEach((n) => { if (params.get(n) === '1') { const i = form.querySelector(`[name="${n}"]`); if (i) i.checked = true; } });
-  ['min', 'max'].forEach((n) => { if (params.get(n)) form.querySelector(`[name="${n}"]`).value = params.get(n); });
+  if (params.get('max') && priceRange) priceRange.value = params.get('max');
   if (sortSel && params.get('sort')) sortSel.value = params.get('sort');
 
   form.addEventListener('change', () => apply());
@@ -119,11 +123,12 @@ function init(root) {
     const b = e.target.closest('[data-clear]'); if (!b) return;
     const n = b.dataset.clear;
     if (n === 'all') form.reset();
-    else if (n === 'price') { form.querySelector('[name="min"]').value = ''; form.querySelector('[name="max"]').value = ''; }
+    else if (n === 'price') { if (priceRange) priceRange.value = priceRange.max; }
     else { const i = form.querySelector(`[name="${n}"][value="${CSS.escape(b.dataset.value)}"]`) || form.querySelector(`[name="${n}"]`); if (i) i.checked = false; }
     apply();
   });
-  $('[data-filters-reset]', root)?.addEventListener('click', () => { form.reset(); apply(); });
+  $$('[data-filters-reset]', root).forEach((b) => b.addEventListener('click', () => { form.reset(); if (priceRange) priceRange.value = priceRange.max; apply(); }));
+  priceRange && priceRange.addEventListener('input', () => apply());
 
   // Mobile bottom sheet
   const openBtn = $('[data-filters-open]', root);

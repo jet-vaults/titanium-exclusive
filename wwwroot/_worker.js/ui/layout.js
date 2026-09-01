@@ -7,7 +7,7 @@ import { BRAND, NAV, FOOTER_LINKS } from '../content/brand.js';
 import { getCategories, getAllProducts, featuredProducts } from '../lib/store.js';
 import { ICON, button } from './components.js';
 
-export const ASSET_VERSION = '5';
+export const ASSET_VERSION = '6';
 
 export async function shellData(c) {
   const [categories, products] = await Promise.all([getCategories(c.ctx), getAllProducts(c.ctx, c.currency)]);
@@ -65,7 +65,7 @@ ${ld.map((o) => jsonLd(o))}
 <body class="${bodyClass}" data-header-theme="${headerTheme}">
 <a class="skip-link" href="#main">Skip to content</a>
 ${header(c, shell)}
-${mobileNav(shell ? shell.categories : [])}
+${mobileNav(c, shell ? shell.categories : [])}
 <main id="main" tabindex="-1">${body}</main>
 ${footer(c)}
 ${cartDrawer()}
@@ -163,7 +163,7 @@ function megaMenu(cats, featured) {
   </div>`;
 }
 
-function mobileNav(cats) {
+function mobileNav(c, cats) {
   const primary = PRIMARY_COLLECTIONS.map((k) => cats.find((c) => c.slug === k.slug) || { slug: k.slug, name: k.name, count: 0 });
   const others = cats.filter((c) => !PRIMARY_COLLECTIONS.some((k) => k.slug === c.slug));
   return html`
@@ -185,6 +185,10 @@ function mobileNav(cats) {
         </details>
         ${NAV.filter((n) => !n.mega).map((n) => html`<a class="mobile-nav__link" href="${n.href}">${n.label}</a>`)}
       </nav>
+      <div class="mobile-nav__currency currency" data-currency-switch>
+        <span class="currency__label">Currency</span>
+        ${SITE.currencies.map((cur) => html`<button type="button" class="currency__opt ${cur === c.currency ? 'is-active' : ''}" data-currency="${cur}" aria-pressed="${cur === c.currency}">${cur}</button>`)}
+      </div>
       <div class="mobile-nav__foot">
         <button type="button" data-cart-open>${raw(ICON.bag)} Cart</button>
         <a href="/support/">Support</a>

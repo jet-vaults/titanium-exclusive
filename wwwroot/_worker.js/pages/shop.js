@@ -88,14 +88,22 @@ function shopGrid(shell, products, { hideCategoryFilter = false } = {}) {
   const types = Object.keys(TYPE_LABEL).filter((t) => products.some((p) => p.family === t));
   const lidCounts = { included: products.filter((p) => lidState(p) === 'included').length, optional: products.filter((p) => lidState(p) === 'optional').length };
   const prices = products.map((p) => p.price / 100).filter(Boolean);
-  const min = Math.floor(Math.min(...prices) || 0), max = Math.ceil(Math.max(...prices) || 0);
+  const min = Math.floor((Math.min(...prices) || 0) / 10) * 10, max = Math.ceil((Math.max(...prices) || 100) / 10) * 10;
+  const currencyCode = products[0] ? products[0].currency : 'CAD';
   return html`
     <div class="shop" data-shop>
       <form class="filters" data-filters aria-label="Filters">
         <div class="filters__close"><span>Filter</span><button class="icon-btn" type="button" data-filters-close aria-label="Close filters">${raw(ICON.close)}</button></div>
+        <p class="filters__results" data-shop-count>${products.length} products</p>
+        <div class="filters__head">
+          <h2 class="filters__heading">Filters</h2>
+          <button class="filters__clear" type="button" data-filters-reset>Clear all</button>
+        </div>
         ${!hideCategoryFilter && cats.length > 1 ? html`
           <fieldset class="filters__group"><legend class="filters__title">Collection</legend>
-            ${cats.map((k) => html`<label><input type="checkbox" name="cat" value="${k.slug}"> ${k.name}<span class="filters__count">${products.filter((p) => p.categories.some((x) => x.slug === k.slug)).length}</span></label>`)}
+            <div class="filters__opts filters__opts--scroll">
+              ${cats.map((k) => html`<label><span class="tick"></span><input type="checkbox" name="cat" value="${k.slug}"> ${k.name}<span class="filters__count">${products.filter((p) => p.categories.some((x) => x.slug === k.slug)).length}</span></label>`)}
+            </div>
           </fieldset>` : ''}
         ${Object.values(sizeCounts).some(Boolean) ? html`
           <fieldset class="filters__group"><legend class="filters__title">Size</legend>
@@ -114,7 +122,8 @@ function shopGrid(shell, products, { hideCategoryFilter = false } = {}) {
             ${types.map((t) => html`<label><input type="checkbox" name="type" value="${t}"> ${TYPE_LABEL[t]}<span class="filters__count">${products.filter((p) => p.family === t).length}</span></label>`)}
           </fieldset>` : ''}
         <fieldset class="filters__group"><legend class="filters__title">Price</legend>
-          <div class="filters__range"><input class="input" type="number" name="min" min="${min}" max="${max}" placeholder="${min}" aria-label="Minimum price"><span>–</span><input class="input" type="number" name="max" min="${min}" max="${max}" placeholder="${max}" aria-label="Maximum price"></div>
+          <p class="filters__price-label">Up to <strong data-price-label>$${max}</strong> <span class="filters__price-cur">${currencyCode}</span></p>
+          <input class="filters__slider" type="range" name="max" min="${min}" max="${max}" step="10" value="${max}" data-price-range aria-label="Maximum price">
         </fieldset>
         <fieldset class="filters__group"><legend class="filters__title">Availability</legend>
           <label><input type="checkbox" name="sale" value="1"> On sale<span class="filters__count">${products.filter((p) => p.onSale).length}</span></label>

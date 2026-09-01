@@ -2,17 +2,26 @@
 // normalised once per worker instance. No network calls.
 
 import catalog from '../data/catalog.js';
-import { COLLECTIONS } from '../config.js';
+import { COLLECTIONS, CURRENCY } from '../config.js';
+import { getUsdRate } from './currency.js';
 import { textOf, decodeEntities } from './html.js';
 
 const cache = new Map();
 
+// Charm-round a converted minor-unit amount to x.99.
+function convertMinor(minor, rate) {
+  const n = Number(minor) || 0;
+  if (!n) return 0;
+  return Math.max(99, Math.round((n * rate) / 100) * 100 - 1);
+}
+
 // ---- Catalog -----------------------------------------------------------------
 
-export async function getAllProducts(_ctx, currency = 'CAD') {
-  const key = `products:${currency}`;
+export async function getAllProducts(ctx, currency = 'CAD') {
+  const rate = currency === CURRENCY.base ? 1 : await getUsdRate(ctx);
+  const key = `products:${currency}:${rate.toFixed(4)}`;
   if (!cache.has(key)) {
-    cache.set(key, catalog.products.map((p) => normalizeProduct(p, currency)).filter((p) => p.purchasable || p.type === 'gift-card'));
+    cache.set(key, catalog.products.map((p) => normalizeProduct(p, currency, rate)).filter((p) => p.purchasable || p.type === 'gift-card'));
   }
   return cache.get(key);
 }
@@ -84,9 +93,10 @@ export function getRawRecipes() {
 
 // ---- Normalisation ---------------------------------------------------------
 
-function normalizeProduct(p, currency) {
+function normalizeProduct(p, currency, rate = 1) {
   const prices = p.prices || {};
   const minor = Number(prices.currency_minor_unit ?? 2);
+  const cv = (m) => (rate === 1 ? Number(m) || 0 : convertMinor(m, rate));
   const specs = parseSpecs(textOf(p.short_description));
   const categories = (p.categories || []).map((c) => ({ id: c.id, slug: c.slug, name: decodeEntities(c.name) }));
   const family = detectFamily(p, categories);
@@ -108,11 +118,10 @@ function normalizeProduct(p, currency) {
     capacityL: specs.capacityL || null,
     lidIncluded,
     onSale: !!p.on_sale,
-    price: Number(prices.price || 0),
-    regularPrice: Number(prices.regular_price || 0),
-    salePrice: Number(prices.sale_price || 0),
-    priceRange: prices.price_range ? { min: Number(prices.price_range.min_amount), max: Number(prices.price_range.max_amount) } : null,
-    // The former store displayed identical figures in CAD and USD; we keep that behaviour.
+    price: cv(prices.price),
+    regularPrice: cv(prices.regular_price),
+    salePrice: cv(prices.sale_price),
+    priceRange: prices.price_range ? { min: cv(prices.price_range.min_amount), max: cv(prices.price_range.max_amount) } : null,
     currency,
     minorUnit: minor,
     rating: Number(p.average_rating || 0),
@@ -129,13 +138,13 @@ function normalizeProduct(p, currency) {
     variations: (p.variations || []).map((v) => ({
       id: v.id,
       attributes: v.attributes,
-      price: Number(v.price || prices.price || 0),
-      regularPrice: Number(v.regular_price || 0),
+      price: cv(v.price || prices.price),
+      regularPrice: cv(v.regular_price),
       onSale: !!v.on_sale,
       inStock: v.is_in_stock !== false,
       sku: v.sku || '',
     })),
-    addons: (p.addons || []).map((a) => ({ ...a, options: a.options.map((o) => ({ ...o, priceMinor: Math.round(Number(o.price || 0) * 100) })) })),
+    addons: (p.addons || []).map((a) => ({ ...a, options: a.options.map((o) => { const pm = o.price ? cv(Math.round(Number(o.price) * 100)) : 0; return { ...o, priceMinor: pm, price: pm / 100 }; }) })),
     hasOptions: !!p.has_options,
     purchasable: !!p.is_purchasable,
     inStock: !!p.is_in_stock,
@@ -268,7 +277,10 @@ export function sizeOptions(products, product) {
 
 // Compact representation used by the client-side cart.
 export function cartLineData(p) {
+  const addonPrices = {};
+  for (const a of p.addons) for (const o of a.options) addonPrices[o.field] = o.priceMinor;
   return {
+    addonPrices,
     id: p.id,
     name: p.name,
     permalink: p.permalink,
